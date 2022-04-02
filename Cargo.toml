@@ -7,3 +7,4 @@ edition = "2021"
 
 [dependencies]
 iced = { version = "0.3.0",features = ["async-std", "debug"]}
+#iced_aw = { git = "https://github.com/iced-rs/iced_aw", branch = "main"}
