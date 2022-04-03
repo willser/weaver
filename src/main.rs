@@ -3,8 +3,8 @@
 use iced::text_input::State;
 use iced::{
     button, executor, pick_list, scrollable, slider, text_input, Align, Application, Button,
-    Clipboard, Column, Command, Container, Element, Length, PickList, Radio, Row, Rule, Scrollable,
-    Settings, Text, TextInput,
+    Clipboard, Column, Command, Container, Element, HorizontalAlignment, Length, PickList, Radio,
+    Row, Rule, Scrollable, Settings, Text, TextInput,
 };
 
 use std::borrow::BorrowMut;
@@ -24,14 +24,15 @@ struct Weaver {
     scroll: scrollable::State,
     input: text_input::State,
     input_value: String,
-    button: button::State,
-    header: Vec<(String, String, text_input::State, text_input::State)>,
+    send_button: button::State,
+    header: Vec<RequestHeader>,
     body: RequestBody,
     content_type: ContentType,
     method: Method,
     method_pick_list: pick_list::State<Method>,
     request_info: RequestInfo,
     request_info_is_param: bool,
+    add_header_button: button::State,
 }
 
 #[derive(Debug, Clone)]
@@ -41,6 +42,10 @@ enum Message {
     ContentTypeChanged(ContentType),
     MethodSelected(Method),
     RequestInfoChanged(bool),
+    ChangeHeaderKey(usize, String),
+    ChangeHeaderValue(usize, String),
+    AddHeader,
+    DelHeader(usize),
 }
 
 #[derive(Debug, Eq, PartialEq, Clone, Copy)]
@@ -66,6 +71,15 @@ impl Display for Method {
             }
         )
     }
+}
+
+#[derive(Debug, Default)]
+struct RequestHeader {
+    key: String,
+    value: String,
+    key_input: text_input::State,
+    value_input: text_input::State,
+    delete_button: button::State,
 }
 
 #[derive(Debug, Default)]
@@ -156,11 +170,28 @@ impl Application for Weaver {
                 self.request_info_is_param = info;
                 Command::none()
             }
+
+            Message::ChangeHeaderKey(index, value) => {
+                self.header[index].key = value;
+                Command::none()
+            }
+            Message::ChangeHeaderValue(index, value) => {
+                self.header[index].value = value;
+                Command::none()
+            }
+            Message::AddHeader => {
+                self.header.push(RequestHeader::default());
+                Command::none()
+            }
+            Message::DelHeader(index) => {
+                self.header.remove(index);
+                Command::none()
+            }
         }
     }
 
     fn view(&mut self) -> Element<Message> {
-        let button = Button::new(&mut self.button, Text::new("Send"))
+        let button = Button::new(&mut self.send_button, Text::new("Send"))
             .padding(10)
             .on_press(Message::SendButtonPressed);
 
@@ -188,11 +219,49 @@ impl Application for Weaver {
         // .style(style::Theme::Light);
 
         let element: Element<Message> = match self.request_info_is_param {
-            false => Row::new()
-                .spacing(10)
-                .push(Text::new("Request Header:"))
-                .align_items(Align::Center)
-                .into(),
+            false => {
+                self.header
+                    .iter_mut()
+                    .enumerate()
+                    .fold(
+                        Column::new().align_items(Align::Center),
+                        |column, (index, header)| {
+                            column.push(
+                                Row::new()
+                                    .push(TextInput::new(
+                                        &mut header.key_input,
+                                        "",
+                                        &header.key,
+                                        move |message| Message::ChangeHeaderKey(index, message),
+                                    ))
+                                    .push(TextInput::new(
+                                        &mut header.value_input,
+                                        "",
+                                        &header.value,
+                                        move |message| Message::ChangeHeaderValue(index, message),
+                                    ))
+                                    .push(
+                                        Button::new(&mut header.delete_button, Text::new("DEL"))
+                                            .padding(10)
+                                            .on_press(Message::DelHeader(index)),
+                                    ),
+                            )
+                        },
+                    )
+                    .push(
+                        Row::new().align_items(Align::Center).push(
+                            Button::new(&mut self.add_header_button, Text::new("+"))
+                                .padding(10)
+                                .on_press(Message::AddHeader),
+                        ),
+                    )
+                    .into()
+                // Row::new()
+                //     .spacing(10)
+                //     .push(Text::new("Request Header:"))
+                //     .align_items(Align::Center)
+                //     .into()
+            }
             true => Row::new()
                 .spacing(10)
                 .push(Text::new("Content type:"))
