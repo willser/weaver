@@ -7,7 +7,6 @@ use iced::{
     Row, Rule, Scrollable, Settings, Text, TextInput,
 };
 
-use std::borrow::BorrowMut;
 use std::fmt::{Alignment, Display, Formatter};
 
 fn main() {
@@ -21,15 +20,17 @@ fn main() {
 
 #[derive(Debug, Default)]
 struct Weaver {
-    scroll: scrollable::State,
-    input: text_input::State,
-    input_value: String,
+    url_input: text_input::State,
+    url: String,
+    param_json_input: text_input::State,
+    param_json: String,
     send_button: button::State,
     header: Vec<RequestHeader>,
     body: RequestBody,
     content_type: ContentType,
     method: Method,
     method_pick_list: pick_list::State<Method>,
+    method_scroll: scrollable::State,
     request_info: RequestInfo,
     request_info_is_param: bool,
     add_header_button: button::State,
@@ -39,6 +40,7 @@ struct Weaver {
 enum Message {
     SendButtonPressed,
     UrlChanged(String),
+    ParamJsonChange(String),
     ContentTypeChanged(ContentType),
     MethodSelected(Method),
     RequestInfoChanged(bool),
@@ -111,7 +113,7 @@ pub struct RequestInfo {
 }
 
 impl RequestInfo {
-    fn view(&mut self, is_param: bool) -> Row<Message> {
+    fn view(&mut self, is_param: bool) -> Element<Message> {
         let RequestInfo { header, param } = self;
 
         let get_button = |state, label, _now_is_param: bool, is_param| {
@@ -124,13 +126,17 @@ impl RequestInfo {
                 .padding(8)
         };
 
-        Row::new().spacing(20).align_items(Align::Center).push(
-            Row::new()
-                .width(Length::Shrink)
-                .spacing(10)
-                .push(get_button(header, "REQUEST HEADER", is_param, false))
-                .push(get_button(param, "PARAM", is_param, true)),
-        )
+        Column::new()
+            .width(Length::Fill)
+            .align_items(Align::Center)
+            .push(
+                Row::new()
+                    .spacing(50)
+                    .align_items(Align::Center)
+                    .push(get_button(header, "REQUEST HEADER", is_param, false))
+                    .push(get_button(param, "PARAM", is_param, true)),
+            )
+            .into()
     }
 }
 
@@ -155,7 +161,7 @@ impl Application for Weaver {
         match message {
             Message::SendButtonPressed => Command::none(),
             Message::UrlChanged(value) => {
-                self.input_value = value;
+                self.url = value;
                 Command::none()
             }
             Message::ContentTypeChanged(content_type) => {
@@ -187,6 +193,10 @@ impl Application for Weaver {
                 self.header.remove(index);
                 Command::none()
             }
+            Message::ParamJsonChange(value) => {
+                self.param_json = value;
+                Command::none()
+            }
         }
     }
 
@@ -196,9 +206,9 @@ impl Application for Weaver {
             .on_press(Message::SendButtonPressed);
 
         let text_input = TextInput::new(
-            &mut self.input,
+            &mut self.url_input,
             "URL...",
-            &self.input_value,
+            &self.url,
             Message::UrlChanged,
         )
         .padding(10)
@@ -212,19 +222,19 @@ impl Application for Weaver {
         );
         // .style(style::Theme::Light);
 
-        let mut content = Scrollable::new(&mut self.scroll)
+        let mut method_list = Scrollable::new(&mut self.method_scroll)
             .align_items(Align::Center)
             .spacing(10)
             .push(pick_list);
         // .style(style::Theme::Light);
 
-        let element: Element<Message> = match self.request_info_is_param {
+        let request_info: Element<Message> = match self.request_info_is_param {
             false => {
                 self.header
                     .iter_mut()
                     .enumerate()
                     .fold(
-                        Column::new().align_items(Align::Center),
+                        Column::new().align_items(Align::Center).width(Length::Fill),
                         |column, (index, header)| {
                             column.push(
                                 Row::new()
@@ -262,22 +272,35 @@ impl Application for Weaver {
                 //     .align_items(Align::Center)
                 //     .into()
             }
-            true => Row::new()
-                .spacing(10)
-                .push(Text::new("Content type:"))
-                .push(Radio::new(
-                    ContentType::FormData,
-                    format!("x-www-form-urlencoded;charset=UTF-8"),
-                    Some(self.content_type),
-                    Message::ContentTypeChanged,
-                ))
-                .push(Radio::new(
-                    ContentType::Json,
-                    format!("json"),
-                    Some(self.content_type),
-                    Message::ContentTypeChanged,
-                ))
+            true => Column::new()
+                .width(Length::Fill)
                 .align_items(Align::Center)
+                .push(
+                    Row::new()
+                        .spacing(10)
+                        .push(Text::new("Content type:"))
+                        .push(Radio::new(
+                            ContentType::FormData,
+                            format!("x-www-form-urlencoded;charset=UTF-8"),
+                            Some(self.content_type),
+                            Message::ContentTypeChanged,
+                        ))
+                        .push(Radio::new(
+                            ContentType::Json,
+                            format!("json"),
+                            Some(self.content_type),
+                            Message::ContentTypeChanged,
+                        )),
+                )
+                .push(match self.content_type {
+                    ContentType::FormData => Column::new().push(Text::new("formdata")),
+                    ContentType::Json => Column::new().push(Row::new().push(TextInput::new(
+                        &mut self.param_json_input,
+                        "",
+                        &self.param_json,
+                        Message::ParamJsonChange,
+                    ))),
+                })
                 .into(),
         };
         let content = Column::new()
@@ -287,14 +310,14 @@ impl Application for Weaver {
             .push(
                 Row::new()
                     .spacing(10)
-                    .push(content)
+                    .push(method_list)
                     .push(text_input)
                     .push(button),
             )
             // .push(Rule::horizontal(38))
             .push(self.request_info.view(self.request_info_is_param))
             .push(Rule::horizontal(5))
-            .push(element);
+            .push(request_info);
 
         Container::new(content)
             .width(Length::Fill)
