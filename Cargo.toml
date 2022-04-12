@@ -2,8 +2,14 @@
 name = "weaver"
 version = "0.1.0"
 edition = "2021"
+authors = ["will <https://github.com/willser>"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-eframe = "0.17.0" # Gives us egui, epi and web+native backends
+# Epi and web+native backends
+eframe = {version = "0.17.0" ,features=["default","persistence"]}
+# Deserialize/Serialize
+serde = { version = "1", features = ["derive"]}
+# Create request id
+rand = "0.8"
