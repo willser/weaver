@@ -1,10 +1,13 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod http;
+mod setting;
 
+use eframe::egui::{Context, FontData, FontDefinitions, FontFamily};
 use eframe::{egui, epi};
 use http::Http;
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
 #[derive(Deserialize, Serialize)]
@@ -85,17 +88,20 @@ impl epi::App for Weaver {
     /// Called once before the first frame.
     fn setup(
         &mut self,
-        _ctx: &egui::Context,
+        ctx: &egui::Context,
         _frame: &epi::Frame,
         storage: Option<&dyn epi::Storage>,
     ) {
+        ctx.set_fonts(setting::get_default_font());
         // Load previous app state (if any).
         if let Some(storage) = storage {
+            // TODO change key in feature
             *self = epi::get_value(storage, epi::APP_KEY).unwrap_or_default()
         }
     }
 
     fn save(&mut self, storage: &mut dyn epi::Storage) {
+        // TODO change key in feature
         epi::set_value(storage, epi::APP_KEY, self);
     }
 
