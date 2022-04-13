@@ -3,16 +3,15 @@
 mod http;
 mod setting;
 
-use eframe::egui::{Context, FontData, FontDefinitions, FontFamily};
 use eframe::{egui, epi};
 use http::Http;
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
 
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
 #[derive(Deserialize, Serialize)]
 pub struct Weaver {
     requests: Vec<Http>,
+    active: usize,
 }
 
 /// Unused for now
@@ -23,7 +22,10 @@ enum Request {
 
 impl Default for Weaver {
     fn default() -> Self {
-        Self { requests: vec![] }
+        Self {
+            requests: vec![],
+            active: 0,
+        }
     }
 }
 
@@ -52,10 +54,14 @@ impl epi::App for Weaver {
         });
         egui::SidePanel::left("request_list").show(ctx, |ui| {
             ui.heading("Request");
-
-            for request in &self.requests {
-                if ui.button(&request.name).clicked() {}
-            }
+            self.requests
+                .iter()
+                .enumerate()
+                .for_each(|(index, request)| {
+                    if ui.button(&request.name).clicked() {
+                        self.active = index
+                    }
+                });
 
             // ui.add(egui::Slider::new(value, 0.0..=10.0).text("value"));
             // if ui.button("Increment").clicked() {
@@ -73,15 +79,11 @@ impl epi::App for Weaver {
             });
         });
 
-        egui::CentralPanel::default().show(ctx, |_ui| {
-            // The central panel the region left after adding TopPanel's and SidePanel's
-            // ui.heading("eframe template");
-            // ui.hyperlink("https://github.com/emilk/eframe_template");
-            // ui.add(egui::github_link_file!(
-            //     "https://github.com/emilk/eframe_template/blob/master/",
-            //     "Source code."
-            // ));
-            // egui::warn_if_debug_build(ui);
+        egui::CentralPanel::default().show(ctx, |ui| match self.requests.get_mut(self.active) {
+            None => {}
+            Some(request) => {
+                request.show(ui);
+            }
         });
     }
 
