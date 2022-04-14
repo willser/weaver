@@ -3,6 +3,7 @@
 mod http;
 mod setting;
 
+use eframe::egui::{Color32, RichText, TextStyle, WidgetText};
 use eframe::{egui, epi};
 use http::Http;
 use serde::{Deserialize, Serialize};
@@ -53,15 +54,37 @@ impl epi::App for Weaver {
             });
         });
         egui::SidePanel::left("request_list").show(ctx, |ui| {
-            ui.heading("Request");
-            self.requests
-                .iter()
-                .enumerate()
-                .for_each(|(index, request)| {
-                    if ui.button(&request.name).clicked() {
-                        self.active = index
-                    }
+            ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
+                ui.heading(RichText::from("REQUEST").text_style(TextStyle::Heading));
+            });
+
+            // This variable used for save `active request` when click.
+            // Worry about out of bounds is unnecessary,because active will be set to 0 after remove any `request`.Someday maybe change this implementation.
+            let mut index: usize = 0;
+            self.requests.retain(|request| {
+                let is_active = self.active == index;
+
+                // TODO Better styles.
+                let widget_text = WidgetText::from(&request.name).color(if is_active {
+                    Color32::BLUE
+                } else {
+                    Color32::GRAY
                 });
+
+                let request_button = ui.button(widget_text);
+                if request_button.clicked() {
+                    // self.active = index
+                    self.active = index;
+                }
+
+                // Only active request can be deleted
+                let deleted = is_active && request_button.secondary_clicked();
+                if deleted {
+                    self.active = 0
+                }
+                index += 1;
+                return !deleted;
+            });
 
             // ui.add(egui::Slider::new(value, 0.0..=10.0).text("value"));
             // if ui.button("Increment").clicked() {
