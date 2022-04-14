@@ -1,11 +1,13 @@
+#![feature(vec_retain_mut)]
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-mod http;
+mod request;
 mod setting;
 
+use crate::request::Request;
 use eframe::egui::{Color32, RichText, TextStyle, WidgetText};
 use eframe::{egui, epi};
-use http::Http;
+use request::http::Http;
 use serde::{Deserialize, Serialize};
 
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
@@ -16,10 +18,10 @@ pub struct Weaver {
 }
 
 /// Unused for now
-#[derive(Deserialize, Serialize)]
-enum Request {
-    HTTP(Http),
-}
+// #[derive(Deserialize, Serialize)]
+// enum Request {
+//     HTTP(Http),
+// }
 
 impl Default for Weaver {
     fn default() -> Self {
@@ -35,6 +37,8 @@ impl epi::App for Weaver {
     /// Put your widgets into a `SidePanel`, `TopPanel`, `CentralPanel`, `Window` or `Area`.
     fn update(&mut self, ctx: &egui::Context, _frame: &epi::Frame) {
         // let Self { requests } = self;
+        // TODO styles
+        // ctx.set_style()
 
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
             // The top panel is often a good place for a menu bar:
@@ -58,6 +62,7 @@ impl epi::App for Weaver {
                 ui.heading(RichText::from("REQUEST").text_style(TextStyle::Heading));
             });
 
+            // TODO Change to `selectable_value`
             // This variable used for save `active request` when click.
             // Worry about out of bounds is unnecessary,because active will be set to 0 after remove any `request`.Someday maybe change this implementation.
             let mut index: usize = 0;
@@ -65,7 +70,7 @@ impl epi::App for Weaver {
                 let is_active = self.active == index;
 
                 // TODO Better styles.
-                let widget_text = WidgetText::from(&request.name).color(if is_active {
+                let widget_text = WidgetText::from(request.request_name()).color(if is_active {
                     Color32::BLUE
                 } else {
                     Color32::GRAY
@@ -105,7 +110,7 @@ impl epi::App for Weaver {
         egui::CentralPanel::default().show(ctx, |ui| match self.requests.get_mut(self.active) {
             None => {}
             Some(request) => {
-                request.show(ui);
+                request.view(ui);
             }
         });
     }

@@ -17,3 +17,5 @@ serde = { version = "1", features = ["derive"]}
 rand = "0.8"
 # Load font from system
 font-loader = "0.11.0"
+# Create file dialog
+rfd = "0.8"
