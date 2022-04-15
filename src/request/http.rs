@@ -38,7 +38,7 @@ impl Default for FormParamType {
     }
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Eq, PartialEq)]
 enum ParamType {
     FormData,
     Raw,
@@ -133,86 +133,118 @@ impl Request for Http {
                 });
             }
             false => {
-                // TODO
-                ui.horizontal(|ui| {
-                    ui.group(|ui| {
-                        ui.vertical_centered(|ui| {
-                            let mut label = 0;
-                            self.form_param.retain_mut(
-                                |(key, value, path_buf, form_param_type)| {
-                                    ui.horizontal(|ui| {
-                                        ui.text_edit_singleline(key);
-                                        // let string = get_uuid();
-                                        label += 1;
-                                        ComboBox::from_id_source(
-                                            label.to_string() + "form_param_type_combo_box",
-                                        )
-                                        .selected_text(format!("{:?}", form_param_type))
-                                        .show_ui(
-                                            ui,
-                                            |ui| {
-                                                ui.selectable_value(
-                                                    form_param_type,
-                                                    FormParamType::Text,
-                                                    "Text",
-                                                );
-                                                ui.selectable_value(
-                                                    form_param_type,
-                                                    FormParamType::File,
-                                                    "File",
-                                                );
-                                            },
-                                        );
+                self.param_view(ui);
+            }
+        }
+    }
+}
 
-                                        match form_param_type {
-                                            FormParamType::File => {
-                                                let file_button = ui.button(match path_buf {
-                                                    Some(name) => name
-                                                        .file_name()
-                                                        .unwrap_or_else(|| OsStr::new("Open file…"))
-                                                        .to_str()
-                                                        .unwrap_or("Open file…"),
-                                                    _ => "Open file…",
-                                                });
-                                                if file_button.clicked() {
-                                                    if let Some(path) =
-                                                        rfd::FileDialog::new().pick_file()
-                                                    {
-                                                        *path_buf = Some(path);
-                                                    }
-                                                }
-
-                                                if file_button.secondary_clicked() {
-                                                    *path_buf = None;
-                                                }
-                                            }
-                                            FormParamType::Text => {
-                                                ui.text_edit_singleline(value);
-                                            }
-                                        }
-
-                                        !ui.button("Del").clicked()
-                                    })
-                                    .inner
-                                },
-                            );
-                            ui.horizontal(|ui| {
-                                ui.vertical_centered(|ui| {
-                                    if ui.button("Add").clicked() {
-                                        self.form_param.push((
-                                            "".to_string(),
-                                            "".to_string(),
-                                            None,
-                                            FormParamType::Text,
-                                        ));
-                                    }
-                                })
-                            });
-                        });
+impl Http {
+    fn param_type_view(&mut self, ui: &mut Ui) {
+        match self.method {
+            Method::POST => {
+                ui.vertical_centered(|ui| {
+                    ui.with_layout(Layout::left_to_right(), |ui| {
+                        ui.selectable_value(&mut self.param_type, ParamType::Raw, "raw");
+                        ui.selectable_value(&mut self.param_type, ParamType::FormData, "form-data");
+                    })
+                });
+            }
+            Method::GET => {
+                ui.vertical_centered(|ui| {
+                    ui.with_layout(Layout::left_to_right(), |ui| {
+                        self.param_type = ParamType::FormData;
+                        ui.selectable_value(&mut self.param_type, ParamType::FormData, "form-data");
                     })
                 });
             }
         }
+    }
+
+    fn param_view(&mut self, ui: &mut Ui) {
+        ui.horizontal(|ui| {
+            ui.group(|ui| {
+                ui.vertical_centered(|ui| {
+                    self.param_type_view(ui);
+
+                    match self.param_type {
+                        ParamType::FormData => {
+                            self.form_data_param_view(ui);
+                        }
+                        ParamType::Raw => {
+                            self.raw_param_view(ui);
+                        }
+                    }
+                });
+            })
+        });
+    }
+
+    fn form_data_param_view(&mut self, ui: &mut Ui) {
+        let mut label = 0;
+        self.form_param
+            .retain_mut(|(key, value, path_buf, form_param_type)| {
+                ui.horizontal(|ui| {
+                    ui.text_edit_singleline(key);
+                    // let string = get_uuid();
+                    label += 1;
+                    ComboBox::from_id_source(label.to_string() + "form_param_type_combo_box")
+                        .selected_text(format!("{:?}", form_param_type))
+                        .show_ui(ui, |ui| {
+                            ui.selectable_value(form_param_type, FormParamType::Text, "Text");
+                            ui.selectable_value(form_param_type, FormParamType::File, "File");
+                        });
+
+                    // TODO refactor following code
+                    match form_param_type {
+                        FormParamType::File => {
+                            let file_button = ui.button(match path_buf {
+                                Some(name) => name
+                                    .file_name()
+                                    .unwrap_or_else(|| OsStr::new("Open file…"))
+                                    .to_str()
+                                    .unwrap_or("Open file…"),
+                                _ => "Open file…",
+                            });
+                            if file_button.clicked() {
+                                if let Some(path) = rfd::FileDialog::new().pick_file() {
+                                    *path_buf = Some(path);
+                                }
+                            }
+
+                            if file_button.secondary_clicked() {
+                                *path_buf = None;
+                            }
+                        }
+                        FormParamType::Text => {
+                            ui.text_edit_singleline(value);
+                        }
+                    }
+
+                    !ui.button("Del").clicked()
+                })
+                .inner
+            });
+        ui.horizontal(|ui| {
+            ui.vertical_centered(|ui| {
+                if ui.button("Add").clicked() {
+                    self.form_param.push((
+                        "".to_string(),
+                        "".to_string(),
+                        None,
+                        FormParamType::Text,
+                    ));
+                }
+            })
+        });
+    }
+
+    fn raw_param_view(&mut self, ui: &mut Ui) {
+        ui.horizontal(|ui| {
+            ui.vertical_centered(|ui| {
+                ui.text_edit_multiline(&mut self.text_param);
+            })
+        });
     }
 }
 
