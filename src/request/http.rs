@@ -18,6 +18,7 @@ pub struct Http {
     form_param: Vec<(String, String, Option<PathBuf>, FormParamType)>,
     param_type: ParamType,
     show_header: bool,
+    response_body: String,
 }
 
 // impl PartialEq for Http {
@@ -42,6 +43,7 @@ impl Default for FormParamType {
 enum ParamType {
     FormData,
     Raw,
+    Query,
 }
 
 impl Default for ParamType {
@@ -62,6 +64,13 @@ impl Default for Http {
             form_param: vec![],
             param_type: Default::default(),
             show_header: true,
+            response_body: r#"
+            qwe
+            qwe
+            qw
+            e
+            qw"#
+            .to_string(),
         }
     }
 }
@@ -85,6 +94,13 @@ impl Request for Http {
             ui.text_edit_singleline(&mut self.name);
         });
 
+        ui.horizontal(|ui| {
+            ui.vertical_centered(|ui| {
+                ui.label("Request");
+            })
+        });
+        ui.separator();
+
         ui.with_layout(Layout::left_to_right().with_cross_align(Align::Min), |ui| {
             // ui.horizontal(|ui| {
             //     ui.selectable_value(&mut self.method, Method::GET, "GET");
@@ -94,8 +110,18 @@ impl Request for Http {
             ComboBox::from_id_source("comboBox")
                 .selected_text(format!("{:?}", self.method))
                 .show_ui(ui, |ui| {
-                    ui.selectable_value(&mut self.method, Method::GET, "GET");
-                    ui.selectable_value(&mut self.method, Method::POST, "POST");
+                    if ui
+                        .selectable_value(&mut self.method, Method::GET, "GET")
+                        .changed()
+                    {
+                        self.form_param = vec![];
+                    };
+                    if ui
+                        .selectable_value(&mut self.method, Method::POST, "POST")
+                        .changed()
+                    {
+                        self.param_type = ParamType::FormData;
+                    };
                 });
 
             ui.text_edit_singleline(&mut self.url);
@@ -106,7 +132,6 @@ impl Request for Http {
             ui.selectable_value(&mut self.show_header, true, "HEADER");
             ui.selectable_value(&mut self.show_header, false, "PARAM");
         });
-        ui.separator();
 
         match self.show_header {
             true => {
@@ -136,6 +161,20 @@ impl Request for Http {
                 self.param_view(ui);
             }
         }
+        ui.horizontal(|ui| {
+            ui.vertical_centered(|ui| {
+                ui.label("Response");
+            })
+        });
+        ui.separator();
+
+        ui.horizontal(|ui| {
+            ui.group(|ui| {
+                ui.vertical_centered_justified(|ui| {
+                    ui.add_enabled_ui(true, |ui| ui.text_edit_multiline(&mut self.response_body));
+                })
+            })
+        });
     }
 }
 
@@ -153,8 +192,8 @@ impl Http {
             Method::GET => {
                 ui.vertical_centered(|ui| {
                     ui.with_layout(Layout::left_to_right(), |ui| {
-                        self.param_type = ParamType::FormData;
-                        ui.selectable_value(&mut self.param_type, ParamType::FormData, "form-data");
+                        self.param_type = ParamType::Query;
+                        ui.selectable_value(&mut self.param_type, ParamType::Query, "query");
                     })
                 });
             }
@@ -173,6 +212,9 @@ impl Http {
                         }
                         ParamType::Raw => {
                             self.raw_param_view(ui);
+                        }
+                        ParamType::Query => {
+                            self.query_param_view(ui);
                         }
                     }
                 });
@@ -241,8 +283,32 @@ impl Http {
 
     fn raw_param_view(&mut self, ui: &mut Ui) {
         ui.horizontal(|ui| {
-            ui.vertical_centered(|ui| {
+            ui.vertical_centered_justified(|ui| {
                 ui.text_edit_multiline(&mut self.text_param);
+            })
+        });
+    }
+
+    fn query_param_view(&mut self, ui: &mut Ui) {
+        self.form_param.retain_mut(|(key, value, ..)| {
+            ui.horizontal(|ui| {
+                ui.text_edit_singleline(key);
+                ui.text_edit_singleline(value);
+
+                !ui.button("Del").clicked()
+            })
+            .inner
+        });
+        ui.horizontal(|ui| {
+            ui.vertical_centered(|ui| {
+                if ui.button("Add").clicked() {
+                    self.form_param.push((
+                        "".to_string(),
+                        "".to_string(),
+                        None,
+                        FormParamType::Text,
+                    ));
+                }
             })
         });
     }
