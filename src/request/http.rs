@@ -64,13 +64,7 @@ impl Default for Http {
             form_param: vec![],
             param_type: Default::default(),
             show_header: true,
-            response_body: r#"
-            qwe
-            qwe
-            qw
-            e
-            qw"#
-            .to_string(),
+            response_body: "".to_string(),
         }
     }
 }
@@ -125,7 +119,9 @@ impl Request for Http {
                 });
 
             ui.text_edit_singleline(&mut self.url);
-            let _ = ui.button("SEND");
+            if ui.button("SEND").clicked() {
+                self.response_body = reqwest::blocking::get(&self.url).unwrap().text().unwrap();
+            };
         });
 
         ui.horizontal(|ui| {

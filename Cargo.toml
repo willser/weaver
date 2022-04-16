@@ -19,3 +19,9 @@ rand = "0.8"
 font-loader = "0.11.0"
 # Create file dialog
 rfd = "0.8"
+# Sned http request
+reqwest = {version = "0.11.10",features=["default","blocking"]}
+##Lazy_static
+#lazy_static = "1.4.0"
+## Thread pool
+#futures = {version = "0.3.21",features = ["thread-pool"]}
