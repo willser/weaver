@@ -5,7 +5,9 @@ mod request;
 mod setting;
 
 use crate::request::Request;
-use eframe::egui::{Color32, RichText, TextStyle, WidgetText};
+use eframe::egui::FontFamily::Proportional;
+use eframe::egui::TextStyle::{Body, Button, Heading, Small};
+use eframe::egui::{Color32, FontId, RichText, TextStyle, WidgetText};
 use eframe::{egui, epi};
 use request::http::Http;
 use serde::{Deserialize, Serialize};
@@ -39,6 +41,15 @@ impl epi::App for Weaver {
         // let Self { requests } = self;
         // TODO styles
         // ctx.set_style()
+        let mut style = (*ctx.style()).clone();
+        style.text_styles = [
+            (Heading, FontId::new(30.0, Proportional)),
+            (Body, FontId::new(20.0, Proportional)),
+            (Button, FontId::new(20.0, Proportional)),
+            (Small, FontId::new(15.0, Proportional)),
+        ]
+        .into();
+        ctx.set_style(style);
 
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
             // The top panel is often a good place for a menu bar:
