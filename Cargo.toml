@@ -21,7 +21,5 @@ font-loader = "0.11.0"
 rfd = "0.8"
 # Sned http request
 reqwest = {version = "0.11.10",features=["default","blocking"]}
-##Lazy_static
-#lazy_static = "1.4.0"
-## Thread pool
-#futures = {version = "0.3.21",features = ["thread-pool"]}
+# Promise
+poll-promise = "0.1.0"

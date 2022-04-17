@@ -7,7 +7,7 @@ mod setting;
 use crate::request::Request;
 use eframe::egui::FontFamily::Proportional;
 use eframe::egui::TextStyle::{Body, Button, Heading, Small};
-use eframe::egui::{Color32, FontId, RichText, TextStyle, WidgetText};
+use eframe::egui::{CentralPanel, Color32, FontId, RichText, ScrollArea, TextStyle, WidgetText};
 use eframe::{egui, epi};
 use request::http::Http;
 use serde::{Deserialize, Serialize};
@@ -118,10 +118,12 @@ impl epi::App for Weaver {
             });
         });
 
-        egui::CentralPanel::default().show(ctx, |ui| match self.requests.get_mut(self.active) {
+        CentralPanel::default().show(ctx, |ui| match self.requests.get_mut(self.active) {
             None => {}
             Some(request) => {
-                request.view(ui);
+                ScrollArea::vertical().show(ui, |ui| {
+                    request.view(ui);
+                });
             }
         });
     }

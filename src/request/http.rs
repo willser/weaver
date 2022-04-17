@@ -2,7 +2,9 @@ use std::ffi::OsStr;
 use std::path::PathBuf;
 // use crate::http::Method::{GET, POST};
 use crate::request::Request;
-use eframe::egui::{Align, ComboBox, Label, Layout, Ui};
+use crate::Color32;
+use eframe::egui::{Align, ComboBox, Label, Layout, ScrollArea, Ui};
+use poll_promise::Promise;
 use rand::{distributions::Alphanumeric, Rng};
 use serde::{Deserialize, Serialize};
 
@@ -18,7 +20,18 @@ pub struct Http {
     form_param: Vec<(String, String, Option<PathBuf>, FormParamType)>,
     param_type: ParamType,
     show_header: bool,
-    response_body: String,
+    // TODO Discuss this structs' impl
+    #[serde(skip)]
+    response: Option<Response>,
+    // TODO add error handle
+    #[serde(skip)]
+    state: Option<Promise<reqwest::Result<Response>>>,
+}
+
+#[derive(Clone)]
+struct Response {
+    body: String,
+    error: String,
 }
 
 // impl PartialEq for Http {
@@ -64,7 +77,8 @@ impl Default for Http {
             form_param: vec![],
             param_type: Default::default(),
             show_header: true,
-            response_body: "".to_string(),
+            response: Option::default(),
+            state: Option::default(),
         }
     }
 }
@@ -119,9 +133,51 @@ impl Request for Http {
                 });
 
             ui.text_edit_singleline(&mut self.url);
-            if ui.button("SEND").clicked() {
-                self.response_body = reqwest::blocking::get(&self.url).unwrap().text().unwrap();
-            };
+            let url = self.url.clone();
+
+            match &self.state {
+                None => {
+                    let send_button = ui.button("SEND");
+                    if send_button.clicked() {
+                        let promise = Promise::spawn_thread(
+                            "slow_operation",
+                            move || -> reqwest::Result<Response> {
+                                let body = reqwest::blocking::get(url)?.text()?;
+                                Ok(Response {
+                                    body,
+                                    error: "".to_string(),
+                                })
+                            },
+                        );
+                        self.state = Some(promise);
+                    };
+                }
+                Some(promise) => {
+                    // Cancel the request
+
+                    match promise.ready() {
+                        None => {
+                            if ui.button("CANCEL").clicked() {
+                                self.state = None;
+                            }
+                        }
+                        Some(result) => {
+                            match result {
+                                Ok(result) => {
+                                    self.response = Some(result.clone());
+                                }
+                                Err(err) => {
+                                    self.response = Some(Response {
+                                        body: "".to_string(),
+                                        error: format!("{:?}", err),
+                                    });
+                                }
+                            }
+                            self.state = None;
+                        }
+                    }
+                }
+            }
         });
 
         ui.horizontal(|ui| {
@@ -157,6 +213,29 @@ impl Request for Http {
                 self.param_view(ui);
             }
         }
+
+        match &mut self.response {
+            Some(response) => {
+                if !response.error.is_empty() {
+                    ui.horizontal(|ui| {
+                        ui.vertical_centered(|ui| {
+                            ui.label("Error");
+                        })
+                    });
+                    ScrollArea::vertical().show(ui, |ui| {
+                        ui.add(
+                            eframe::egui::TextEdit::multiline(&mut response.error) // for cursor height
+                                .text_color(Color32::RED)
+                                .desired_rows(10)
+                                .lock_focus(true)
+                                .desired_width(f32::INFINITY),
+                        );
+                    });
+                }
+            }
+            None => {}
+        }
+
         ui.horizontal(|ui| {
             ui.vertical_centered(|ui| {
                 ui.label("Response");
@@ -164,13 +243,26 @@ impl Request for Http {
         });
         ui.separator();
 
-        ui.horizontal(|ui| {
-            ui.group(|ui| {
-                ui.vertical_centered_justified(|ui| {
-                    ui.add_enabled_ui(true, |ui| ui.text_edit_multiline(&mut self.response_body));
-                })
-            })
-        });
+        match &mut self.response {
+            None => {}
+            Some(response) => {
+                if response.body.is_empty() {
+                    return ();
+                }
+
+                ui.horizontal(|ui| {
+                    ui.group(|ui| {
+                        ui.vertical_centered_justified(|ui| {
+                            if response.error.is_empty() {
+                                ui.add_enabled_ui(true, |ui| {
+                                    ui.text_edit_multiline(&mut response.body)
+                                });
+                            }
+                        })
+                    })
+                });
+            }
+        }
     }
 }
 
