@@ -141,6 +141,7 @@ impl Request for Http {
                     if send_button.clicked() {
                         let promise = Promise::spawn_thread(
                             "slow_operation",
+                            // TODO More method request
                             move || -> reqwest::Result<Response> {
                                 let body = reqwest::blocking::get(url)?.text()?;
                                 Ok(Response {
@@ -223,13 +224,16 @@ impl Request for Http {
                         })
                     });
                     ScrollArea::vertical().show(ui, |ui| {
+                        // fn selectable_text(ui: &mut Ui, mut text: &str) {
+                        let mut error_text = response.error.as_str();
                         ui.add(
-                            eframe::egui::TextEdit::multiline(&mut response.error) // for cursor height
+                            eframe::egui::TextEdit::multiline(&mut error_text) // for cursor height
                                 .text_color(Color32::RED)
                                 .desired_rows(10)
                                 .lock_focus(true)
                                 .desired_width(f32::INFINITY),
                         );
+                        // })
                     });
                 }
             }
@@ -255,7 +259,8 @@ impl Request for Http {
                         ui.vertical_centered_justified(|ui| {
                             if response.error.is_empty() {
                                 ui.add_enabled_ui(true, |ui| {
-                                    ui.text_edit_multiline(&mut response.body)
+                                    let mut response_body = response.body.as_str();
+                                    ui.text_edit_multiline(&mut response_body)
                                 });
                             }
                         })
