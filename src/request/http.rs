@@ -22,10 +22,10 @@ pub struct Http {
     show_header: bool,
     // TODO Discuss this structs' impl
     #[serde(skip)]
-    result: Option<Result>,
+    result: Option<Result<Response, String>>,
     // TODO add error handle
     #[serde(skip)]
-    state: Option<Promise<reqwest::Result<Response>>>,
+    state: Option<Promise<Result<Response, ureq::Error>>>,
 }
 
 #[derive(Clone)]
@@ -81,11 +81,11 @@ impl Default for Http {
         }
     }
 }
-
-enum Result {
-    Error(String),
-    Ok(Response),
-}
+//
+// enum Result {
+//     Error(String),
+//     Ok(Response),
+// }
 
 fn get_uuid() -> String {
     rand::thread_rng()
@@ -146,9 +146,9 @@ impl Request for Http {
                         let promise = Promise::spawn_thread(
                             "slow_operation",
                             // TODO More method request
-                            move || -> reqwest::Result<Response> {
-                                let body = reqwest::blocking::get(url)?.text()?;
-                                Ok(Response { body })
+                            move || -> Result<Response, ureq::Error> {
+                                let body = ureq::get(&url).call()?.into_string()?;
+                                Result::Ok(Response { body })
                             },
                         );
                         self.state = Some(promise);
@@ -169,7 +169,7 @@ impl Request for Http {
                                     self.result = Some(Result::Ok(result.clone()));
                                 }
                                 Err(err) => {
-                                    self.result = Some(Result::Error(format!("{:?}", err)));
+                                    self.result = Some(Result::Err(format!("{:?}", err)));
                                 }
                             }
                             self.state = None;
@@ -214,7 +214,7 @@ impl Request for Http {
         }
 
         // match &self.result {
-        if let Some(Result::Error(error_text)) = &self.result {
+        if let Some(Result::Err(error_text)) = &self.result {
             ui.horizontal(|ui| {
                 ui.vertical_centered(|ui| {
                     ui.label("Error");
