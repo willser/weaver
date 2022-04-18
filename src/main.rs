@@ -5,8 +5,9 @@ mod request;
 mod setting;
 
 use crate::request::Request;
+use crate::setting::Settings;
 use eframe::egui::FontFamily::Proportional;
-use eframe::egui::TextStyle::{Body, Button, Heading, Small};
+use eframe::egui::TextStyle::{Body, Button, Heading, Monospace, Small};
 use eframe::egui::{CentralPanel, Color32, FontId, RichText, ScrollArea, TextStyle, WidgetText};
 use eframe::{egui, epi};
 use request::http::Http;
@@ -17,6 +18,9 @@ use serde::{Deserialize, Serialize};
 pub struct Weaver {
     requests: Vec<Http>,
     active: usize,
+    #[serde(skip)]
+    show_settings: bool,
+    settings: Settings,
 }
 
 /// Unused for now
@@ -30,6 +34,8 @@ impl Default for Weaver {
         Self {
             requests: vec![],
             active: 0,
+            show_settings: false,
+            settings: Default::default(),
         }
     }
 }
@@ -43,13 +49,25 @@ impl epi::App for Weaver {
         // ctx.set_style()
         let mut style = (*ctx.style()).clone();
         style.text_styles = [
-            (Heading, FontId::new(30.0, Proportional)),
-            (Body, FontId::new(20.0, Proportional)),
-            (Button, FontId::new(20.0, Proportional)),
-            (Small, FontId::new(15.0, Proportional)),
+            (
+                Heading,
+                FontId::new(self.settings.font_size * 1.5, Proportional),
+            ),
+            (Body, FontId::new(self.settings.font_size, Proportional)),
+            (
+                Monospace,
+                FontId::new(self.settings.font_size, Proportional),
+            ),
+            (Button, FontId::new(self.settings.font_size, Proportional)),
+            (
+                Small,
+                FontId::new(self.settings.font_size * 0.75, Proportional),
+            ),
         ]
         .into();
         ctx.set_style(style);
+
+        setting::draw_settings_window(self, ctx);
 
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
             // The top panel is often a good place for a menu bar:
@@ -66,40 +84,45 @@ impl epi::App for Weaver {
                         self.requests.clear();
                     }
                 });
+
+                ui.menu_button("Settings", |_ui| self.show_settings = true);
             });
         });
         egui::SidePanel::left("request_list").show(ctx, |ui| {
-            ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
-                ui.heading(RichText::from("REQUEST").text_style(TextStyle::Heading));
-            });
-
-            // TODO Change to `selectable_value`
-            // This variable used for save `active request` when click.
-            // Worry about out of bounds is unnecessary,because active will be set to 0 after remove any `request`.Someday maybe change this implementation.
-            let mut index: usize = 0;
-            self.requests.retain(|request| {
-                let is_active = self.active == index;
-
-                // TODO Better styles.
-                let widget_text = WidgetText::from(request.request_name()).color(if is_active {
-                    Color32::BLUE
-                } else {
-                    Color32::GRAY
+            ScrollArea::vertical().show(ui, |ui| {
+                ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
+                    ui.heading(RichText::from("REQUEST").text_style(TextStyle::Heading));
                 });
 
-                let request_button = ui.button(widget_text);
-                if request_button.clicked() {
-                    // self.active = index
-                    self.active = index;
-                }
+                // TODO Change to `selectable_value`
+                // This variable used for save `active request` when click.
+                // Worry about out of bounds is unnecessary,because active will be set to 0 after remove any `request`.Someday maybe change this implementation.
+                let mut index: usize = 0;
+                self.requests.retain(|request| {
+                    let is_active = self.active == index;
 
-                // Only active request can be deleted
-                let deleted = is_active && request_button.secondary_clicked();
-                if deleted {
-                    self.active = 0
-                }
-                index += 1;
-                return !deleted;
+                    // TODO Better styles.
+                    let widget_text =
+                        WidgetText::from(request.request_name()).color(if is_active {
+                            Color32::BLUE
+                        } else {
+                            Color32::GRAY
+                        });
+
+                    let request_button = ui.button(widget_text);
+                    if request_button.clicked() {
+                        // self.active = index
+                        self.active = index;
+                    }
+
+                    // Only active request can be deleted
+                    let deleted = is_active && request_button.secondary_clicked();
+                    if deleted {
+                        self.active = 0
+                    }
+                    index += 1;
+                    return !deleted;
+                });
             });
 
             // ui.add(egui::Slider::new(value, 0.0..=10.0).text("value"));
