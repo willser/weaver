@@ -22,7 +22,7 @@ pub struct Http {
     show_header: bool,
     // TODO Discuss this structs' impl
     #[serde(skip)]
-    response: Option<Response>,
+    result: Option<Result>,
     // TODO add error handle
     #[serde(skip)]
     state: Option<Promise<reqwest::Result<Response>>>,
@@ -31,7 +31,6 @@ pub struct Http {
 #[derive(Clone)]
 struct Response {
     body: String,
-    error: String,
 }
 
 // impl PartialEq for Http {
@@ -77,10 +76,15 @@ impl Default for Http {
             form_param: vec![],
             param_type: Default::default(),
             show_header: true,
-            response: Option::default(),
+            result: Option::default(),
             state: Option::default(),
         }
     }
+}
+
+enum Result {
+    Error(String),
+    Ok(Response),
 }
 
 fn get_uuid() -> String {
@@ -144,10 +148,7 @@ impl Request for Http {
                             // TODO More method request
                             move || -> reqwest::Result<Response> {
                                 let body = reqwest::blocking::get(url)?.text()?;
-                                Ok(Response {
-                                    body,
-                                    error: "".to_string(),
-                                })
+                                Ok(Response { body })
                             },
                         );
                         self.state = Some(promise);
@@ -165,13 +166,10 @@ impl Request for Http {
                         Some(result) => {
                             match result {
                                 Ok(result) => {
-                                    self.response = Some(result.clone());
+                                    self.result = Some(Result::Ok(result.clone()));
                                 }
                                 Err(err) => {
-                                    self.response = Some(Response {
-                                        body: "".to_string(),
-                                        error: format!("{:?}", err),
-                                    });
+                                    self.result = Some(Result::Error(format!("{:?}", err)));
                                 }
                             }
                             self.state = None;
@@ -215,29 +213,24 @@ impl Request for Http {
             }
         }
 
-        match &mut self.response {
-            Some(response) => {
-                if !response.error.is_empty() {
-                    ui.horizontal(|ui| {
-                        ui.vertical_centered(|ui| {
-                            ui.label("Error");
-                        })
-                    });
-                    ScrollArea::vertical().show(ui, |ui| {
-                        // fn selectable_text(ui: &mut Ui, mut text: &str) {
-                        let mut error_text = response.error.as_str();
-                        ui.add(
-                            eframe::egui::TextEdit::multiline(&mut error_text) // for cursor height
-                                .text_color(Color32::RED)
-                                .desired_rows(10)
-                                .lock_focus(true)
-                                .desired_width(f32::INFINITY),
-                        );
-                        // })
-                    });
-                }
-            }
-            None => {}
+        // match &self.result {
+        if let Some(Result::Error(error_text)) = &self.result {
+            ui.horizontal(|ui| {
+                ui.vertical_centered(|ui| {
+                    ui.label("Error");
+                })
+            });
+            ScrollArea::vertical().show(ui, |ui| {
+                let mut error_text = error_text.as_str();
+                ui.add(
+                    eframe::egui::TextEdit::multiline(&mut error_text) // for cursor height
+                        .text_color(Color32::RED)
+                        // .desired_rows(10)
+                        .lock_focus(true)
+                        .desired_width(f32::INFINITY),
+                );
+                // })
+            });
         }
 
         ui.horizontal(|ui| {
@@ -247,26 +240,17 @@ impl Request for Http {
         });
         ui.separator();
 
-        match &mut self.response {
-            None => {}
-            Some(response) => {
-                if response.body.is_empty() {
-                    return ();
-                }
-
-                ui.horizontal(|ui| {
-                    ui.group(|ui| {
-                        ui.vertical_centered_justified(|ui| {
-                            if response.error.is_empty() {
-                                ui.add_enabled_ui(true, |ui| {
-                                    let mut response_body = response.body.as_str();
-                                    ui.text_edit_multiline(&mut response_body)
-                                });
-                            }
-                        })
+        if let Some(Result::Ok(response)) = &self.result {
+            ui.horizontal(|ui| {
+                ui.group(|ui| {
+                    ui.vertical_centered_justified(|ui| {
+                        ui.add_enabled_ui(true, |ui| {
+                            let mut response_body = response.body.as_str();
+                            ui.text_edit_multiline(&mut response_body)
+                        });
                     })
-                });
-            }
+                })
+            });
         }
     }
 }
