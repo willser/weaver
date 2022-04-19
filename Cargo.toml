@@ -17,6 +17,8 @@ serde = { version = "1", features = ["derive"]}
 rand = "0.8"
 # Load font from system
 font-loader = "0.11.0"
+# TODO temp depend,mabye remove later
+rust-fontconfig = {version = "0.1.5",features=["std"]}
 # Create file dialog
 # TODO Replace this with a egui window
 rfd = "0.8"

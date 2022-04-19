@@ -6,9 +6,7 @@ mod setting;
 
 use crate::request::Request;
 use crate::setting::Settings;
-use eframe::egui::FontFamily::Proportional;
-use eframe::egui::TextStyle::{Body, Button, Heading, Monospace, Small};
-use eframe::egui::{CentralPanel, Color32, FontId, RichText, ScrollArea, TextStyle, WidgetText};
+use eframe::egui::{CentralPanel, Color32, RichText, ScrollArea, TextStyle, WidgetText};
 use eframe::{egui, epi};
 use request::http::Http;
 use serde::{Deserialize, Serialize};
@@ -18,8 +16,6 @@ use serde::{Deserialize, Serialize};
 pub struct Weaver {
     requests: Vec<Http>,
     active: usize,
-    #[serde(skip)]
-    show_settings: bool,
     settings: Settings,
 }
 
@@ -34,7 +30,6 @@ impl Default for Weaver {
         Self {
             requests: vec![],
             active: 0,
-            show_settings: false,
             settings: Default::default(),
         }
     }
@@ -47,27 +42,8 @@ impl epi::App for Weaver {
         // let Self { requests } = self;
         // TODO styles
         // ctx.set_style()
-        let mut style = (*ctx.style()).clone();
-        style.text_styles = [
-            (
-                Heading,
-                FontId::new(self.settings.font_size * 1.5, Proportional),
-            ),
-            (Body, FontId::new(self.settings.font_size, Proportional)),
-            (
-                Monospace,
-                FontId::new(self.settings.font_size, Proportional),
-            ),
-            (Button, FontId::new(self.settings.font_size, Proportional)),
-            (
-                Small,
-                FontId::new(self.settings.font_size * 0.75, Proportional),
-            ),
-        ]
-        .into();
-        ctx.set_style(style);
-
-        setting::draw_settings_window(self, ctx);
+        self.settings.set(ctx);
+        self.settings.draw_settings_window(ctx);
 
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
             // The top panel is often a good place for a menu bar:
@@ -85,7 +61,7 @@ impl epi::App for Weaver {
                     }
                 });
 
-                ui.menu_button("Settings", |_ui| self.show_settings = true);
+                ui.menu_button("Settings", |_ui| self.settings.show_settings = true);
             });
         });
         egui::SidePanel::left("request_list").show(ctx, |ui| {
@@ -158,12 +134,13 @@ impl epi::App for Weaver {
         _frame: &epi::Frame,
         storage: Option<&dyn epi::Storage>,
     ) {
-        ctx.set_fonts(setting::get_default_font());
         // Load previous app state (if any).
         if let Some(storage) = storage {
             // TODO change key in feature
-            *self = epi::get_value(storage, epi::APP_KEY).unwrap_or_default()
+            *self = epi::get_value(storage, epi::APP_KEY).unwrap_or_default();
         }
+        // Init font after load data from local
+        self.settings.local_settings(ctx);
     }
 
     fn save(&mut self, storage: &mut dyn epi::Storage) {
