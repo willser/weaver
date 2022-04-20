@@ -21,7 +21,8 @@ font-kit = "0.11.0"
 # Create file dialog
 # TODO Replace this with a egui window
 rfd = "0.8"
-# Sned http request
+# Sned http request,TODO re
 ureq = "2.0.0"
+multipart = "0.18.0"
 # Promise
 poll-promise = "0.1.0"

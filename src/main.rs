@@ -101,11 +101,6 @@ impl epi::App for Weaver {
                 });
             });
 
-            // ui.add(egui::Slider::new(value, 0.0..=10.0).text("value"));
-            // if ui.button("Increment").clicked() {
-            //     *value += 1.0;
-            // }
-
             ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
                 ui.horizontal(|ui| {
                     ui.spacing_mut().item_spacing.x = 0.0;

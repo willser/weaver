@@ -1,12 +1,17 @@
 use std::ffi::OsStr;
+use std::io::Read;
 use std::path::PathBuf;
 // use crate::http::Method::{GET, POST};
 use crate::request::Request;
 use crate::Color32;
 use eframe::egui::{Align, ComboBox, Label, Layout, ScrollArea, Ui};
+use multipart::client::lazy::{LazyIoResult, Multipart};
+use multipart::server::nickel::nickel::hyper::error::ParseError;
 use poll_promise::Promise;
 use rand::{distributions::Alphanumeric, Rng};
 use serde::{Deserialize, Serialize};
+use ureq::Error;
+use ureq::ErrorKind::Io;
 
 #[derive(Deserialize, Serialize)]
 pub struct Http {
@@ -28,6 +33,24 @@ pub struct Http {
     state: Option<Promise<Result<Response, ureq::Error>>>,
 }
 
+impl Clone for Http {
+    fn clone(&self) -> Self {
+        Self {
+            id: self.id.clone(),
+            name: self.name.clone(),
+            url: self.url.clone(),
+            method: self.method.clone(),
+            header: self.header.clone(),
+            text_param: self.text_param.clone(),
+            form_param: self.form_param.clone(),
+            param_type: self.param_type.clone(),
+            show_header: self.show_header.clone(),
+            result: None,
+            state: None,
+        }
+    }
+}
+
 #[derive(Clone)]
 struct Response {
     body: String,
@@ -39,7 +62,7 @@ struct Response {
 //     }
 // }
 
-#[derive(Deserialize, Serialize, Eq, PartialEq, Debug)]
+#[derive(Deserialize, Serialize, Eq, PartialEq, Debug, Clone)]
 enum FormParamType {
     File,
     Text,
@@ -51,7 +74,7 @@ impl Default for FormParamType {
     }
 }
 
-#[derive(Deserialize, Serialize, Eq, PartialEq)]
+#[derive(Deserialize, Serialize, Eq, PartialEq, Clone)]
 enum ParamType {
     FormData,
     Raw,
@@ -137,20 +160,12 @@ impl Request for Http {
                 });
 
             ui.text_edit_singleline(&mut self.url);
-            let url = self.url.clone();
-
             match &self.state {
                 None => {
                     let send_button = ui.button("SEND");
                     if send_button.clicked() {
-                        let promise = Promise::spawn_thread(
-                            "slow_operation",
-                            // TODO More method request
-                            move || -> Result<Response, ureq::Error> {
-                                let body = ureq::get(&url).call()?.into_string()?;
-                                Result::Ok(Response { body })
-                            },
-                        );
+                        let request_promise = get_request_promise(self.clone());
+                        let promise = request_promise;
                         self.state = Some(promise);
                     };
                 }
@@ -391,7 +406,56 @@ impl Http {
     }
 }
 
-#[derive(Deserialize, Serialize, Eq, PartialEq, Debug)]
+fn get_request_promise(http: Http) -> Promise<Result<Response, Error>> {
+    let mut request = ureq::request(&format!("{:?}", http.method), &http.url);
+
+    for (k, v) in &http.header {
+        request = request.set(k, v);
+    }
+
+    Promise::spawn_thread(
+        String::from("slow_operation") + &http.id,
+        // TODO More method request
+        move || -> Result<Response, ureq::Error> {
+            let body = match http.param_type {
+                ParamType::FormData => {
+                    let mut multipart = Multipart::new();
+
+                    for (k, v, p, t) in &http.form_param {
+                        match t {
+                            FormParamType::File => {
+                                if !k.is_empty() && p.is_some() {
+                                    multipart.add_file(k, p.unwrap());
+                                }
+                            }
+                            FormParamType::Text => {
+                                if !k.is_empty() && !v.is_empty() {
+                                    multipart.add_text(k, v);
+                                }
+                            }
+                        }
+                    }
+                    let result = multipart.prepare();
+
+                    let data = result.unwrap().boundary().as_bytes();
+                    request.send_bytes(data)
+                }
+                ParamType::Raw => request.send_string(&http.text_param),
+                ParamType::Query => {
+                    for (k, v, ..) in &http.form_param {
+                        request = request.query(k, v)
+                    }
+                    request.call()
+                }
+            }?
+            .into_string()?;
+
+            Result::Ok(Response { body })
+        },
+    )
+}
+
+#[derive(Deserialize, Serialize, Eq, PartialEq, Debug, Clone)]
 enum Method {
     POST,
     GET,
