@@ -5,7 +5,10 @@ use eframe::egui::{
     ComboBox, Context, DragValue, FontData, FontDefinitions, FontFamily, FontId, Grid, Window,
 };
 use eframe::epi::egui::style::TextStyle::Monospace;
-use font_loader::system_fonts::FontPropertyBuilder;
+use font_kit::family_name::FamilyName;
+use font_kit::handle::Handle;
+use font_kit::properties::Properties;
+use font_kit::source::SystemSource;
 use serde::{Deserialize, Serialize};
 use std::ops::RangeInclusive;
 
@@ -14,8 +17,6 @@ pub struct Settings {
     #[serde(skip)]
     pub show_settings: bool,
     pub font_size: f32,
-    /// TODO Change to String
-    // #[serde(skip)]
     pub font: String,
     #[serde(skip)]
     pub system_font: Vec<String>,
@@ -53,10 +54,8 @@ impl Settings {
             .collapsible(false)
             .show(ctx, |ui| {
                 Grid::new("setting_grid")
-                    .min_col_width(200.00)
+                    .min_col_width(100.00)
                     .num_columns(2)
-                    .spacing([40.0, 4.0])
-                    .striped(true)
                     .show(ui, |ui| {
                         ui.label("Font Size");
                         ui.add(
@@ -69,13 +68,13 @@ impl Settings {
                         ui.label("Font");
 
                         ComboBox::from_id_source("font_comboBox")
-                            .selected_text(format!("{:?}", self.font))
+                            .selected_text(format!("{}", self.font))
+                            .width(self.font_size * 10.0)
                             .show_ui(ui, |ui| {
                                 for x in &self.system_font {
-                                    ui.selectable_value(&mut self.font, x.clone(), x);
+                                    ui.selectable_value(&mut self.font, x.clone(), x.as_str());
                                 }
                             });
-
                         ui.end_row();
                     });
             });
@@ -84,72 +83,76 @@ impl Settings {
     pub fn local_settings(&mut self, ctx: &egui::Context) {
         // Init font first.
         self.check_init_font();
-        ctx.set_fonts(get_font(&self.font));
+        ctx.set_fonts(get_font(self.font.clone()));
     }
 
     fn check_init_font(&mut self) {
-        let font = match &self.font {
-            None => get_default_font(),
-            Some(font) => font.to_owned(),
+        let font = if self.font.is_empty() {
+            get_default_font()
+        } else {
+            self.font.clone()
         };
 
-        // Check this system has this font.
-        let vec = font_loader::system_fonts::query_all();
-
-        if vec.contains(&font) {
-            self.font = font;
-        } else {
-            self.font = "".to_string();
-        }
-        self.system_font = vec;
+        // Check current system has this font or not.
+        match SystemSource::new().all_families() {
+            Ok(families) => {
+                if families.contains(&font) {
+                    self.font = font;
+                } else {
+                    self.font = "".to_string();
+                }
+                self.system_font = families;
+            }
+            Err(_error) => {}
+        };
     }
 }
 
-fn get_font(font: &String) -> FontDefinitions {
-    if font.is_empty() {
-        FontDefinitions::default()
-    } else {
-        match font_loader::system_fonts::get(&FontPropertyBuilder::new().family(font).build()) {
-            None => FontDefinitions::default(),
-            Some((font_vec, _)) => {
-                let mut fonts = FontDefinitions::default();
-                fonts
-                    .font_data
-                    .insert(font.to_string(), FontData::from_owned(font_vec));
+fn get_font(font_family: String) -> FontDefinitions {
+    // TODO handle error
+    let mut fonts = FontDefinitions::default();
+    if !font_family.is_empty() {
+        let name = FamilyName::Title(font_family.clone());
+        let properties = Properties::default();
+        match SystemSource::new().select_best_match(&[name], &properties) {
+            Ok(handle) => {
+                let vec = match handle {
+                    Handle::Path { path, .. } => {
+                        // TODO Better impl
+                        FontData::from_owned(match std::fs::read(path) {
+                            Ok(vec) => vec,
+                            Err(_err) => return fonts,
+                        })
+                    }
+                    Handle::Memory { bytes, .. } => FontData::from_owned(bytes.to_vec()),
+                };
+
+                fonts.font_data.insert(font_family.clone(), vec);
                 fonts
                     .families
                     .get_mut(&FontFamily::Proportional)
                     .unwrap()
-                    .insert(0, font.to_string());
+                    .insert(0, font_family.clone());
                 fonts
                     .families
                     .get_mut(&FontFamily::Monospace)
                     .unwrap()
-                    .push(font.to_string());
-                fonts
+                    .push(font_family);
             }
-        }
+            Err(_err) => {}
+        };
     }
+    fonts
 }
 
 #[cfg(windows)]
 pub fn get_default_font() -> String {
-    "Microsoft YaHei UI".to_string()
+    // TODO This is a temp solution,change this for get different font in different lang system
+    // "Microsoft YaHei UI".to_string()
+    "".to_string()
 }
 
 #[cfg(unix)]
 pub fn get_default_font() -> String {
     ""
-}
-
-#[test]
-fn all_font() {
-    // use rust_fontconfig::{FcFontCache, FcPattern};
-    // let cache = FcFontCache::build();
-    // let result = cache.query(&FcPattern {
-    //     name: Some(String::from("Microsoft YaHei UI")),
-    //     ..Default::default()
-    // });
-    //
-    // println!("font path: {:?}", result);
 }
