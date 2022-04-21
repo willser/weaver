@@ -1,17 +1,16 @@
 use std::ffi::OsStr;
-use std::io::Read;
 use std::path::PathBuf;
 // use crate::http::Method::{GET, POST};
 use crate::request::Request;
 use crate::Color32;
-use eframe::egui::{Align, ComboBox, Label, Layout, ScrollArea, Ui};
-use multipart::client::lazy::{LazyIoResult, Multipart};
-use multipart::server::nickel::nickel::hyper::error::ParseError;
+use eframe::egui::{Align, ComboBox, Layout, ScrollArea, Ui};
+// use multipart::client::lazy::{LazyIoResult, Multipart};
+// use multipart::server::nickel::nickel::hyper::error::ParseError;
 use poll_promise::Promise;
 use rand::{distributions::Alphanumeric, Rng};
+use reqwest::Url;
 use serde::{Deserialize, Serialize};
-use ureq::Error;
-use ureq::ErrorKind::Io;
+type RequestResult = Result<Response, String>;
 
 #[derive(Deserialize, Serialize)]
 pub struct Http {
@@ -27,28 +26,10 @@ pub struct Http {
     show_header: bool,
     // TODO Discuss this structs' impl
     #[serde(skip)]
-    result: Option<Result<Response, String>>,
+    result: Option<RequestResult>,
     // TODO add error handle
     #[serde(skip)]
-    state: Option<Promise<Result<Response, ureq::Error>>>,
-}
-
-impl Clone for Http {
-    fn clone(&self) -> Self {
-        Self {
-            id: self.id.clone(),
-            name: self.name.clone(),
-            url: self.url.clone(),
-            method: self.method.clone(),
-            header: self.header.clone(),
-            text_param: self.text_param.clone(),
-            form_param: self.form_param.clone(),
-            param_type: self.param_type.clone(),
-            show_header: self.show_header.clone(),
-            result: None,
-            state: None,
-        }
-    }
+    state: Option<Promise<RequestResult>>,
 }
 
 #[derive(Clone)]
@@ -125,7 +106,7 @@ impl Request for Http {
 
     fn view(&mut self, ui: &mut Ui) {
         ui.with_layout(Layout::left_to_right().with_cross_align(Align::Min), |ui| {
-            ui.add(Label::new("REQUEST NAME: ").wrap(true));
+            // ui.add(Label::new("REQUEST NAME: ").wrap(true));
             ui.text_edit_singleline(&mut self.name);
         });
 
@@ -164,9 +145,19 @@ impl Request for Http {
                 None => {
                     let send_button = ui.button("SEND");
                     if send_button.clicked() {
-                        let request_promise = get_request_promise(self.clone());
-                        let promise = request_promise;
-                        self.state = Some(promise);
+                        match Url::parse(&self.url) {
+                            Ok(url) => {
+                                self.state = Some(get_request_promise(
+                                    Method::GET,
+                                    url,
+                                    self.text_param.clone(),
+                                    self.form_param.clone(),
+                                ));
+                            }
+                            Err(err) => {
+                                self.state = Some(Promise::from_ready(Err(err.to_string())))
+                            }
+                        };
                     };
                 }
                 Some(promise) => {
@@ -179,14 +170,7 @@ impl Request for Http {
                             }
                         }
                         Some(result) => {
-                            match result {
-                                Ok(result) => {
-                                    self.result = Some(Result::Ok(result.clone()));
-                                }
-                                Err(err) => {
-                                    self.result = Some(Result::Err(format!("{:?}", err)));
-                                }
-                            }
+                            self.result = Some(result.clone());
                             self.state = None;
                         }
                     }
@@ -406,51 +390,28 @@ impl Http {
     }
 }
 
-fn get_request_promise(http: Http) -> Promise<Result<Response, Error>> {
-    let mut request = ureq::request(&format!("{:?}", http.method), &http.url);
-
-    for (k, v) in &http.header {
-        request = request.set(k, v);
-    }
-
+/// Create a request promise by request information
+fn get_request_promise(
+    _method: Method,
+    url: Url,
+    _text_param: String,
+    _form_param: Vec<(String, String, Option<PathBuf>, FormParamType)>,
+) -> Promise<RequestResult> {
     Promise::spawn_thread(
-        String::from("slow_operation") + &http.id,
+        String::from("slow_operation"),
         // TODO More method request
-        move || -> Result<Response, ureq::Error> {
-            let body = match http.param_type {
-                ParamType::FormData => {
-                    let mut multipart = Multipart::new();
+        move || -> RequestResult {
+            let result = reqwest::blocking::Client::new()
+                .get(url)
+                // .query(&query_param)
+                .send();
 
-                    for (k, v, p, t) in &http.form_param {
-                        match t {
-                            FormParamType::File => {
-                                if !k.is_empty() && p.is_some() {
-                                    multipart.add_file(k, p.unwrap());
-                                }
-                            }
-                            FormParamType::Text => {
-                                if !k.is_empty() && !v.is_empty() {
-                                    multipart.add_text(k, v);
-                                }
-                            }
-                        }
-                    }
-                    let result = multipart.prepare();
-
-                    let data = result.unwrap().boundary().as_bytes();
-                    request.send_bytes(data)
-                }
-                ParamType::Raw => request.send_string(&http.text_param),
-                ParamType::Query => {
-                    for (k, v, ..) in &http.form_param {
-                        request = request.query(k, v)
-                    }
-                    request.call()
-                }
-            }?
-            .into_string()?;
-
-            Result::Ok(Response { body })
+            return match result {
+                Ok(result) => Result::Ok(Response {
+                    body: result.text().unwrap(),
+                }),
+                Err(err) => Err(format!("{}", err)),
+            };
         },
     )
 }
