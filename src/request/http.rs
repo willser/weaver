@@ -1,15 +1,14 @@
-use std::ffi::OsStr;
-use std::path::PathBuf;
-// use crate::http::Method::{GET, POST};
 use crate::request::Request;
 use crate::Color32;
 use eframe::egui::{Align, ComboBox, Layout, ScrollArea, Ui};
-// use multipart::client::lazy::{LazyIoResult, Multipart};
-// use multipart::server::nickel::nickel::hyper::error::ParseError;
 use poll_promise::Promise;
 use rand::{distributions::Alphanumeric, Rng};
-use reqwest::Url;
+use reqwest::blocking::multipart;
+use reqwest::{StatusCode, Url};
 use serde::{Deserialize, Serialize};
+use std::ffi::OsStr;
+use std::path::PathBuf;
+
 type RequestResult = Result<Response, String>;
 
 #[derive(Deserialize, Serialize)]
@@ -35,6 +34,7 @@ pub struct Http {
 #[derive(Clone)]
 struct Response {
     body: String,
+    code: StatusCode,
 }
 
 // impl PartialEq for Http {
@@ -55,7 +55,7 @@ impl Default for FormParamType {
     }
 }
 
-#[derive(Deserialize, Serialize, Eq, PartialEq, Clone)]
+#[derive(Deserialize, Serialize, Eq, PartialEq, Clone, Copy)]
 enum ParamType {
     FormData,
     Raw,
@@ -65,6 +65,16 @@ enum ParamType {
 impl Default for ParamType {
     fn default() -> Self {
         Self::Raw
+    }
+}
+
+impl ParamType {
+    fn get_content_type(&self) -> String {
+        match self {
+            ParamType::FormData => "multipart/form-data".to_string(),
+            ParamType::Raw => "text/plain".to_string(),
+            ParamType::Query => "".to_string(),
+        }
     }
 }
 
@@ -149,7 +159,9 @@ impl Request for Http {
                             Ok(url) => {
                                 self.state = Some(get_request_promise(
                                     Method::GET,
+                                    self.param_type,
                                     url,
+                                    self.header.clone(),
                                     self.text_param.clone(),
                                     self.form_param.clone(),
                                 ));
@@ -392,23 +404,62 @@ impl Http {
 
 /// Create a request promise by request information
 fn get_request_promise(
-    _method: Method,
+    method: Method,
+    param_type: ParamType,
     url: Url,
-    _text_param: String,
-    _form_param: Vec<(String, String, Option<PathBuf>, FormParamType)>,
+    headers: Vec<(String, String)>,
+    text_param: String,
+    form_param: Vec<(String, String, Option<PathBuf>, FormParamType)>,
 ) -> Promise<RequestResult> {
     Promise::spawn_thread(
         String::from("slow_operation"),
         // TODO More method request
         move || -> RequestResult {
-            let result = reqwest::blocking::Client::new()
-                .get(url)
-                // .query(&query_param)
-                .send();
+            let client = reqwest::blocking::Client::new();
+
+            let request = match method {
+                Method::GET => client.get(url),
+                Method::POST => {
+                    let mut builder = client.post(url);
+                    for (k, v) in headers {
+                        builder = builder.header(k, v);
+                    }
+                    builder = match param_type {
+                        ParamType::FormData => {
+                            let mut form = multipart::Form::new();
+
+                            for (k, v_text, v_file, typ) in form_param {
+                                match (typ, v_file) {
+                                    (FormParamType::File, Some(v_file)) => {
+                                        form = match form.file(k, v_file) {
+                                            Ok(file) => file,
+                                            Err(err) => return Err(format!("{}", err)),
+                                        };
+                                    }
+                                    (FormParamType::Text, _) => {
+                                        form = form.text(k, v_text);
+                                    }
+                                    _ => {}
+                                }
+                            }
+                            builder.multipart(form)
+                        }
+                        ParamType::Raw => builder.body(text_param),
+                        _ => builder,
+                    }
+                    .header("Content-Type", param_type.get_content_type());
+
+                    builder
+                }
+            };
+
+            // .query(&query_param)
+            let result = request.send();
 
             return match result {
                 Ok(result) => Result::Ok(Response {
-                    body: result.text().unwrap(),
+                    code: result.status(),
+                    body: result.text().unwrap_or("".to_string()),
                 }),
                 Err(err) => Err(format!("{}", err)),
             };
