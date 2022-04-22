@@ -1,12 +1,15 @@
 use crate::request::Request;
 use crate::Color32;
-use eframe::egui::{Align, CollapsingHeader, ComboBox, Layout, ScrollArea, Ui};
+use eframe::egui::{
+    Align, Button, CollapsingHeader, ComboBox, Grid, Layout, ScrollArea, TextEdit, Ui,
+};
 use poll_promise::Promise;
 use rand::{distributions::Alphanumeric, Rng};
 use reqwest::blocking::multipart;
 use reqwest::{StatusCode, Url};
 use serde::{Deserialize, Serialize};
 use std::ffi::OsStr;
+use std::ops::RangeInclusive;
 use std::path::PathBuf;
 
 type RequestResult = Result<Response, String>;
@@ -110,8 +113,16 @@ fn get_uuid() -> String {
 }
 
 impl Request for Http {
-    fn request_name(&self) -> &String {
-        &self.name
+    fn request_name(&self) -> &str {
+        if self.name.is_empty() {
+            return "Http Request";
+        }
+
+        if self.name.len() > 15 {
+            return &self.name[0..15];
+        }
+
+        &self.name.as_str()
     }
 
     fn view(&mut self, ui: &mut Ui) {
@@ -121,11 +132,6 @@ impl Request for Http {
         });
 
         ui.with_layout(Layout::left_to_right().with_cross_align(Align::Min), |ui| {
-            // ui.horizontal(|ui| {
-            //     ui.selectable_value(&mut self.method, Method::GET, "GET");
-            //     ui.selectable_value(&mut self.method, Method::POST, "POST");
-            // });
-
             ComboBox::from_id_source("comboBox")
                 .selected_text(format!("{:?}", self.method))
                 .show_ui(ui, |ui| {
@@ -143,7 +149,8 @@ impl Request for Http {
                     };
                 });
 
-            ui.text_edit_singleline(&mut self.url);
+            ui.add(TextEdit::singleline(&mut self.url));
+
             match &self.state {
                 None => {
                     let send_button = ui.button("SEND");
