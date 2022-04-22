@@ -1,6 +1,6 @@
 use crate::request::Request;
 use crate::Color32;
-use eframe::egui::{Align, ComboBox, Layout, ScrollArea, Ui};
+use eframe::egui::{Align, CollapsingHeader, ComboBox, Layout, ScrollArea, Ui};
 use poll_promise::Promise;
 use rand::{distributions::Alphanumeric, Rng};
 use reqwest::blocking::multipart;
@@ -58,13 +58,13 @@ impl Default for FormParamType {
 #[derive(Deserialize, Serialize, Eq, PartialEq, Clone, Copy)]
 enum ParamType {
     FormData,
-    Raw,
+    Json,
     Query,
 }
 
 impl Default for ParamType {
     fn default() -> Self {
-        Self::Raw
+        Self::Json
     }
 }
 
@@ -72,7 +72,7 @@ impl ParamType {
     fn get_content_type(&self) -> String {
         match self {
             ParamType::FormData => "multipart/form-data".to_string(),
-            ParamType::Raw => "text/plain".to_string(),
+            ParamType::Json => "application/json".to_string(),
             ParamType::Query => "".to_string(),
         }
     }
@@ -120,13 +120,6 @@ impl Request for Http {
             ui.text_edit_singleline(&mut self.name);
         });
 
-        ui.horizontal(|ui| {
-            ui.vertical_centered(|ui| {
-                ui.label("Request");
-            })
-        });
-        ui.separator();
-
         ui.with_layout(Layout::left_to_right().with_cross_align(Align::Min), |ui| {
             // ui.horizontal(|ui| {
             //     ui.selectable_value(&mut self.method, Method::GET, "GET");
@@ -158,7 +151,7 @@ impl Request for Http {
                         match Url::parse(&self.url) {
                             Ok(url) => {
                                 self.state = Some(get_request_promise(
-                                    Method::GET,
+                                    self.method.clone(),
                                     self.param_type,
                                     url,
                                     self.header.clone(),
@@ -190,47 +183,9 @@ impl Request for Http {
             }
         });
 
-        ui.horizontal(|ui| {
-            ui.selectable_value(&mut self.show_header, true, "HEADER");
-            ui.selectable_value(&mut self.show_header, false, "PARAM");
-        });
-
-        match self.show_header {
-            true => {
-                ui.horizontal(|ui| {
-                    ui.group(|ui| {
-                        ui.vertical_centered(|ui| {
-                            self.header.retain_mut(|(key, value)| {
-                                ui.horizontal(|ui| {
-                                    ui.text_edit_singleline(key);
-                                    ui.text_edit_singleline(value);
-                                    !ui.button("Del").clicked()
-                                })
-                                .inner
-                            });
-                            ui.horizontal(|ui| {
-                                ui.vertical_centered(|ui| {
-                                    if ui.button("Add").clicked() {
-                                        self.header.push(("".to_string(), "".to_string()));
-                                    }
-                                })
-                            });
-                        });
-                    })
-                });
-            }
-            false => {
-                self.param_view(ui);
-            }
-        }
-
-        // match &self.result {
         if let Some(Result::Err(error_text)) = &self.result {
-            ui.horizontal(|ui| {
-                ui.vertical_centered(|ui| {
-                    ui.label("Error");
-                })
-            });
+            // ui.horizontal(|ui| ui.label("Error"));
+
             ScrollArea::vertical().show(ui, |ui| {
                 let mut error_text = error_text.as_str();
                 ui.add(
@@ -240,29 +195,63 @@ impl Request for Http {
                         .lock_focus(true)
                         .desired_width(f32::INFINITY),
                 );
-                // })
             });
         }
 
-        ui.horizontal(|ui| {
-            ui.vertical_centered(|ui| {
-                ui.label("Response");
-            })
-        });
-        ui.separator();
+        CollapsingHeader::new("Request")
+            .default_open(true)
+            .show(ui, |ui| {
+                ui.horizontal(|ui| {
+                    ui.selectable_value(&mut self.show_header, true, "HEADER");
+                    ui.selectable_value(&mut self.show_header, false, "PARAM");
+                });
 
-        if let Some(Result::Ok(response)) = &self.result {
-            ui.horizontal(|ui| {
-                ui.group(|ui| {
-                    ui.vertical_centered_justified(|ui| {
-                        ui.add_enabled_ui(true, |ui| {
-                            let mut response_body = response.body.as_str();
-                            ui.text_edit_multiline(&mut response_body)
+                match self.show_header {
+                    true => {
+                        ui.horizontal(|ui| {
+                            ui.group(|ui| {
+                                ui.vertical_centered(|ui| {
+                                    self.header.retain_mut(|(key, value)| {
+                                        ui.horizontal(|ui| {
+                                            ui.text_edit_singleline(key);
+                                            ui.text_edit_singleline(value);
+                                            !ui.button("Del").clicked()
+                                        })
+                                        .inner
+                                    });
+                                    ui.horizontal(|ui| {
+                                        ui.vertical_centered(|ui| {
+                                            if ui.button("Add").clicked() {
+                                                self.header.push(("".to_string(), "".to_string()));
+                                            }
+                                        })
+                                    });
+                                });
+                            })
                         });
-                    })
-                })
+                    }
+                    false => {
+                        self.param_view(ui);
+                    }
+                }
             });
-        }
+
+        CollapsingHeader::new("Response")
+            .default_open(true)
+            .show(ui, |ui| {
+                if let Some(Result::Ok(response)) = &self.result {
+                    ui.horizontal(|ui| {
+                        ui.group(|ui| {
+                            ui.vertical_centered_justified(|ui| {
+                                ui.add_enabled_ui(true, |ui| {
+                                    let mut response_body = response.body.as_str();
+                                    ui.text_edit_multiline(&mut response_body)
+                                });
+                            })
+                        })
+                    });
+                }
+            });
     }
 }
 
@@ -272,7 +261,7 @@ impl Http {
             Method::POST => {
                 ui.vertical_centered(|ui| {
                     ui.with_layout(Layout::left_to_right(), |ui| {
-                        ui.selectable_value(&mut self.param_type, ParamType::Raw, "raw");
+                        ui.selectable_value(&mut self.param_type, ParamType::Json, "json");
                         ui.selectable_value(&mut self.param_type, ParamType::FormData, "form-data");
                     })
                 });
@@ -298,7 +287,7 @@ impl Http {
                         ParamType::FormData => {
                             self.form_data_param_view(ui);
                         }
-                        ParamType::Raw => {
+                        ParamType::Json => {
                             self.raw_param_view(ui);
                         }
                         ParamType::Query => {
@@ -444,7 +433,7 @@ fn get_request_promise(
                             }
                             builder.multipart(form)
                         }
-                        ParamType::Raw => builder.body(text_param),
+                        ParamType::Json => builder.body(text_param),
                         _ => builder,
                     }
                     .header("Content-Type", param_type.get_content_type());
