@@ -95,12 +95,16 @@ impl Settings {
 
         // Check current system has this font or not.
         match SystemSource::new().all_families() {
-            Ok(families) => {
+            Ok(mut families) => {
                 if families.contains(&font) {
                     self.font = font;
                 } else {
                     self.font = "".to_string();
                 }
+
+                // None font select
+                families.insert(0, "NO SETTING".to_string());
+
                 self.system_font = families;
             }
             Err(_error) => {}
@@ -147,9 +151,16 @@ fn get_font(font_family: String) -> FontDefinitions {
 
 #[cfg(windows)]
 pub fn get_default_font() -> String {
-    // TODO This is a temp solution,change this for get different font in different lang system
-    // "Microsoft YaHei UI".to_string()
-    "".to_string()
+    if let Some((_, lang)) = locale_config::Locale::current().tags().next() {
+        let lang_str = lang.to_string();
+        match lang_str.as_str() {
+            "zh-CN" => {
+                return "Microsoft YaHei UI".to_string();
+            }
+            _ => {}
+        }
+    }
+    return "".to_string();
 }
 
 #[cfg(unix)]

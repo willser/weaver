@@ -6,7 +6,7 @@ mod setting;
 
 use crate::request::Request;
 use crate::setting::Settings;
-use eframe::egui::{CentralPanel, Color32, RichText, ScrollArea, TextStyle, WidgetText};
+use eframe::egui::{CentralPanel, Color32, ScrollArea, WidgetText};
 use eframe::{egui, epi};
 use request::http::Http;
 use serde::{Deserialize, Serialize};
@@ -66,9 +66,9 @@ impl epi::App for Weaver {
         });
         egui::SidePanel::left("request_list").show(ctx, |ui| {
             ScrollArea::vertical().show(ui, |ui| {
-                ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
-                    ui.heading(RichText::from("REQUEST").text_style(TextStyle::Heading));
-                });
+                // ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
+                //     ui.heading(RichText::from("REQUEST").text_style(TextStyle::Heading));
+                // });
 
                 // TODO Change to `selectable_value`
                 // This variable used for save `active request` when click.
@@ -90,10 +90,18 @@ impl epi::App for Weaver {
                         // self.active = index
                         self.active = index;
                     }
+                    if request_button.hovered() && self.active == index {
+                        egui::show_tooltip_text(
+                            ui.ctx(),
+                            egui::Id::new("delete_tip"),
+                            "Right click to delete",
+                        );
+                    }
 
                     // Only active request can be deleted
                     let deleted = is_active && request_button.secondary_clicked();
                     if deleted {
+                        // TODO double check
                         self.active = 0
                     }
                     index += 1;

@@ -1,15 +1,12 @@
 use crate::request::Request;
 use crate::Color32;
-use eframe::egui::{
-    Align, Button, CollapsingHeader, ComboBox, Grid, Layout, ScrollArea, TextEdit, Ui,
-};
+use eframe::egui::{Align, CollapsingHeader, ComboBox, Layout, ScrollArea, TextEdit, Ui};
 use poll_promise::Promise;
 use rand::{distributions::Alphanumeric, Rng};
 use reqwest::blocking::multipart;
 use reqwest::{StatusCode, Url};
 use serde::{Deserialize, Serialize};
 use std::ffi::OsStr;
-use std::ops::RangeInclusive;
 use std::path::PathBuf;
 
 type RequestResult = Result<Response, String>;
@@ -247,6 +244,12 @@ impl Request for Http {
             .default_open(true)
             .show(ui, |ui| {
                 if let Some(Result::Ok(response)) = &self.result {
+                    ui.label(format!(
+                        "{} {}",
+                        response.code.as_str(),
+                        response.code.canonical_reason().unwrap_or("")
+                    ));
+
                     ui.horizontal(|ui| {
                         ui.group(|ui| {
                             ui.vertical_centered_justified(|ui| {
