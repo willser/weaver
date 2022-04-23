@@ -119,7 +119,7 @@ impl Request for Http {
             return &self.name[0..15];
         }
 
-        &self.name.as_str()
+        self.name.as_str()
     }
 
     fn view(&mut self, ui: &mut Ui) {
@@ -133,13 +133,13 @@ impl Request for Http {
                 .selected_text(format!("{:?}", self.method))
                 .show_ui(ui, |ui| {
                     if ui
-                        .selectable_value(&mut self.method, Method::GET, "GET")
+                        .selectable_value(&mut self.method, Method::Get, "GET")
                         .changed()
                     {
                         self.form_param = vec![];
                     };
                     if ui
-                        .selectable_value(&mut self.method, Method::POST, "POST")
+                        .selectable_value(&mut self.method, Method::Post, "POST")
                         .changed()
                     {
                         self.param_type = ParamType::FormData;
@@ -268,7 +268,7 @@ impl Request for Http {
 impl Http {
     fn param_type_view(&mut self, ui: &mut Ui) {
         match self.method {
-            Method::POST => {
+            Method::Post => {
                 ui.vertical_centered(|ui| {
                     ui.with_layout(Layout::left_to_right(), |ui| {
                         ui.selectable_value(&mut self.param_type, ParamType::Json, "json");
@@ -276,7 +276,7 @@ impl Http {
                     })
                 });
             }
-            Method::GET => {
+            Method::Get => {
                 ui.vertical_centered(|ui| {
                     ui.with_layout(Layout::left_to_right(), |ui| {
                         self.param_type = ParamType::Query;
@@ -417,8 +417,8 @@ fn get_request_promise(
             let client = reqwest::blocking::Client::new();
 
             let request = match method {
-                Method::GET => client.get(url),
-                Method::POST => {
+                Method::Get => client.get(url),
+                Method::Post => {
                     let mut builder = client.post(url);
                     for (k, v) in headers {
                         builder = builder.header(k, v);
@@ -458,7 +458,7 @@ fn get_request_promise(
             return match result {
                 Ok(result) => Result::Ok(Response {
                     code: result.status(),
-                    body: result.text().unwrap_or("".to_string()),
+                    body: result.text().unwrap_or_else(|_| "".to_string()),
                 }),
                 Err(err) => Err(format!("{}", err)),
             };
@@ -468,12 +468,12 @@ fn get_request_promise(
 
 #[derive(Deserialize, Serialize, Eq, PartialEq, Debug, Clone)]
 enum Method {
-    POST,
-    GET,
+    Post,
+    Get,
 }
 
 impl Default for Method {
     fn default() -> Self {
-        Self::GET
+        Self::Get
     }
 }

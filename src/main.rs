@@ -105,7 +105,7 @@ impl epi::App for Weaver {
                         self.active = 0
                     }
                     index += 1;
-                    return !deleted;
+                    !deleted
                 });
             });
 

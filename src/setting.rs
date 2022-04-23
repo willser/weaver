@@ -68,7 +68,7 @@ impl Settings {
                         ui.label("Font");
 
                         ComboBox::from_id_source("font_comboBox")
-                            .selected_text(format!("{}", self.font))
+                            .selected_text(self.font.to_string())
                             .width(self.font_size * 10.0)
                             .show_ui(ui, |ui| {
                                 for x in &self.system_font {
@@ -160,7 +160,7 @@ pub fn get_default_font() -> String {
             _ => {}
         }
     }
-    return "".to_string();
+    "".to_string()
 }
 
 #[cfg(unix)]
