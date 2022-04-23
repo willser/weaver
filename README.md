@@ -10,8 +10,9 @@ It supports `GET` and `POST` `method` and some `Content-Type` like `application/
 
 ### UI
 
+
 <div align=center>
-    <img src ="https://github.com/willser/weaver/tree/master/resources/post.PNG"/>
+    <img src="resources/post.PNG">
 </div>
 
 More screenshot in [here](https://github.com/willser/weaver/tree/master/resources/)
