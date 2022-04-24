@@ -165,5 +165,5 @@ pub fn get_default_font() -> String {
 
 #[cfg(unix)]
 pub fn get_default_font() -> String {
-    ""
+    "".to_string()
 }

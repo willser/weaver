@@ -37,12 +37,6 @@ struct Response {
     code: StatusCode,
 }
 
-// impl PartialEq for Http {
-//     fn eq(&self, other: &Self) -> bool {
-//         self.id == other.id
-//     }
-// }
-
 #[derive(Deserialize, Serialize, Eq, PartialEq, Debug, Clone)]
 enum FormParamType {
     File,
@@ -57,9 +51,11 @@ impl Default for FormParamType {
 
 #[derive(Deserialize, Serialize, Eq, PartialEq, Clone, Copy)]
 enum ParamType {
+    None,
     FormData,
     Json,
     Query,
+    Other,
 }
 
 impl Default for ParamType {
@@ -73,7 +69,7 @@ impl ParamType {
         match self {
             ParamType::FormData => "multipart/form-data".to_string(),
             ParamType::Json => "application/json".to_string(),
-            ParamType::Query => "".to_string(),
+            _ => "".to_string(),
         }
     }
 }
@@ -132,18 +128,7 @@ impl Request for Http {
             ComboBox::from_id_source("comboBox")
                 .selected_text(format!("{:?}", self.method))
                 .show_ui(ui, |ui| {
-                    if ui
-                        .selectable_value(&mut self.method, Method::Get, "GET")
-                        .changed()
-                    {
-                        self.form_param = vec![];
-                    };
-                    if ui
-                        .selectable_value(&mut self.method, Method::Post, "POST")
-                        .changed()
-                    {
-                        self.param_type = ParamType::FormData;
-                    };
+                    self.method_select(ui);
                 });
 
             ui.add(TextEdit::singleline(&mut self.url));
@@ -268,19 +253,21 @@ impl Request for Http {
 impl Http {
     fn param_type_view(&mut self, ui: &mut Ui) {
         match self.method {
-            Method::Post => {
-                ui.vertical_centered(|ui| {
-                    ui.with_layout(Layout::left_to_right(), |ui| {
-                        ui.selectable_value(&mut self.param_type, ParamType::Json, "json");
-                        ui.selectable_value(&mut self.param_type, ParamType::FormData, "form-data");
-                    })
-                });
-            }
             Method::Get => {
                 ui.vertical_centered(|ui| {
                     ui.with_layout(Layout::left_to_right(), |ui| {
                         self.param_type = ParamType::Query;
                         ui.selectable_value(&mut self.param_type, ParamType::Query, "query");
+                    })
+                });
+            }
+            _ => {
+                ui.vertical_centered(|ui| {
+                    ui.with_layout(Layout::left_to_right(), |ui| {
+                        ui.selectable_value(&mut self.param_type, ParamType::Json, "json");
+                        ui.selectable_value(&mut self.param_type, ParamType::FormData, "form-data");
+                        ui.selectable_value(&mut self.param_type, ParamType::None, "none");
+                        ui.selectable_value(&mut self.param_type, ParamType::Other, "other");
                     })
                 });
             }
@@ -300,9 +287,13 @@ impl Http {
                         ParamType::Json => {
                             self.raw_param_view(ui);
                         }
+                        ParamType::Other => {
+                            self.raw_param_view(ui);
+                        }
                         ParamType::Query => {
                             self.query_param_view(ui);
                         }
+                        _ => {}
                     }
                 });
             })
@@ -399,6 +390,37 @@ impl Http {
             })
         });
     }
+
+    fn method_select(&mut self, ui: &mut Ui) {
+        // TODO Better impl
+        if ui
+            .selectable_value(&mut self.method, Method::Get, "GET")
+            .changed()
+        {
+            self.form_param = vec![];
+        };
+        if ui
+            .selectable_value(&mut self.method, Method::Post, "POST")
+            .changed()
+        {
+            self.form_param = vec![];
+            self.param_type = ParamType::FormData;
+        };
+        if ui
+            .selectable_value(&mut self.method, Method::Put, "PUT")
+            .changed()
+        {
+            self.form_param = vec![];
+            self.param_type = ParamType::FormData;
+        };
+        if ui
+            .selectable_value(&mut self.method, Method::Delete, "DELETE")
+            .changed()
+        {
+            self.form_param = vec![];
+            self.param_type = ParamType::FormData;
+        };
+    }
 }
 
 /// Create a request promise by request information
@@ -416,44 +438,53 @@ fn get_request_promise(
         move || -> RequestResult {
             let client = reqwest::blocking::Client::new();
 
-            let request = match method {
+            let mut builder = match method {
                 Method::Get => client.get(url),
-                Method::Post => {
-                    let mut builder = client.post(url);
-                    for (k, v) in headers {
-                        builder = builder.header(k, v);
-                    }
-                    builder = match param_type {
-                        ParamType::FormData => {
-                            let mut form = multipart::Form::new();
-
-                            for (k, v_text, v_file, typ) in form_param {
-                                match (typ, v_file) {
-                                    (FormParamType::File, Some(v_file)) => {
-                                        form = match form.file(k, v_file) {
-                                            Ok(file) => file,
-                                            Err(err) => return Err(format!("{}", err)),
-                                        };
-                                    }
-                                    (FormParamType::Text, _) => {
-                                        form = form.text(k, v_text);
-                                    }
-                                    _ => {}
-                                }
+                Method::Post => client.post(url),
+                Method::Delete => client.delete(url),
+                Method::Put => client.put(url),
+            };
+            for (k, v) in headers {
+                builder = builder.header(k, v);
+            }
+            builder = match param_type {
+                ParamType::FormData => {
+                    let mut form = multipart::Form::new();
+                    for (k, v_text, v_file, typ) in form_param {
+                        match (typ, v_file) {
+                            (FormParamType::File, Some(v_file)) => {
+                                form = match form.file(k, v_file) {
+                                    Ok(file) => file,
+                                    Err(err) => return Err(format!("{}", err)),
+                                };
                             }
-                            builder.multipart(form)
+                            (FormParamType::Text, _) => {
+                                form = form.text(k, v_text);
+                            }
+                            _ => {}
                         }
-                        ParamType::Json => builder.body(text_param),
-                        _ => builder,
                     }
-                    .header("Content-Type", param_type.get_content_type());
-
-                    builder
+                    builder.multipart(form)
                 }
+                ParamType::Json => builder.body(text_param),
+                ParamType::Other => builder.body(text_param),
+                ParamType::Query => builder.query(
+                    &form_param
+                        .iter()
+                        .map(|(k, v, ..)| (k, v))
+                        .collect::<Vec<(&String, &String)>>(),
+                ),
+                _ => builder,
             };
 
+            // Override content-type if not empty.Maybe add a `override` button for user to select override or not.
+            let content_type = param_type.get_content_type();
+            if !content_type.is_empty() {
+                builder = builder.header("Content-Type", content_type);
+            }
+
             // .query(&query_param)
-            let result = request.send();
+            let result = builder.send();
 
             return match result {
                 Ok(result) => Result::Ok(Response {
@@ -470,6 +501,8 @@ fn get_request_promise(
 enum Method {
     Post,
     Get,
+    Put,
+    Delete,
 }
 
 impl Default for Method {
