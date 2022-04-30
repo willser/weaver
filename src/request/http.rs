@@ -37,6 +37,7 @@ pub struct Http {
 #[derive(Clone)]
 struct Response {
     body: String,
+    size: Option<u64>,
     code: StatusCode,
 }
 
@@ -252,9 +253,17 @@ impl Request for Http {
             .show(ui, |ui| {
                 if let Some(Result::Ok(response)) = &self.result {
                     ui.label(format!(
-                        "{} {}",
+                        "{} {} {}",
                         response.code.as_str(),
-                        response.code.canonical_reason().unwrap_or("")
+                        response.code.canonical_reason().unwrap_or(""),
+                        match response.size {
+                            None => {
+                                "".to_string()
+                            }
+                            Some(size) => {
+                                format!(" ,Size: {}", size)
+                            }
+                        }
                     ));
 
                     ui.horizontal(|ui| {
@@ -511,6 +520,7 @@ fn get_request_promise(
             return match result {
                 Ok(result) => Result::Ok(Response {
                     code: result.status(),
+                    size: result.content_length(),
                     body: result.text().unwrap_or_else(|_| "".to_string()),
                 }),
                 Err(err) => Err(format!("{}", err)),
