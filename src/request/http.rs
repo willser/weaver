@@ -1,6 +1,9 @@
+use crate::color;
 use crate::request::Request;
-use crate::Color32;
-use eframe::egui::{Align, CollapsingHeader, ComboBox, Layout, ScrollArea, TextEdit, Ui};
+
+use eframe::egui::{
+    Align, Button, CollapsingHeader, ComboBox, Layout, ScrollArea, TextEdit, Ui, WidgetText,
+};
 use poll_promise::Promise;
 use rand::{distributions::Alphanumeric, Rng};
 use reqwest::blocking::multipart;
@@ -110,20 +113,17 @@ impl Request for Http {
         if self.name.is_empty() {
             return "Http Request";
         }
-
-        if self.name.len() > 15 {
-            return &self.name[0..15];
-        }
-
         self.name.as_str()
     }
 
     fn view(&mut self, ui: &mut Ui) {
         ui.with_layout(Layout::left_to_right().with_cross_align(Align::Min), |ui| {
             // ui.add(Label::new("REQUEST NAME: ").wrap(true));
-            ui.text_edit_singleline(&mut self.name);
+            TextEdit::singleline(&mut self.name)
+                .desired_width(f32::INFINITY)
+                .show(ui);
         });
-
+        ui.add_space(15.0);
         ui.with_layout(Layout::left_to_right().with_cross_align(Align::Min), |ui| {
             ComboBox::from_id_source("comboBox")
                 .selected_text(format!("{:?}", self.method))
@@ -131,11 +131,20 @@ impl Request for Http {
                     self.method_select(ui);
                 });
 
-            ui.add(TextEdit::singleline(&mut self.url));
+            TextEdit::singleline(&mut self.url)
+                .desired_width(ui.available_width() - 100.0)
+                .show(ui);
+
+            // Button::new("SEND");
 
             match &self.state {
                 None => {
-                    let send_button = ui.button("SEND");
+                    // TODO width of button https://github.com/emilk/egui/blob/master/egui_demo_lib/src/demo/tests.rs
+                    let send_button = ui.add(
+                        Button::new(WidgetText::from(" SEND ").color(color::WHITE))
+                            .fill(color::DODER_BLUE),
+                    );
+
                     if send_button.clicked() {
                         match Url::parse(&self.url) {
                             Ok(url) => {
@@ -159,7 +168,13 @@ impl Request for Http {
 
                     match promise.ready() {
                         None => {
-                            if ui.button("CANCEL").clicked() {
+                            if ui
+                                .add(
+                                    Button::new(WidgetText::from("CANCEL").color(color::WHITE))
+                                        .fill(color::CRIMSON),
+                                )
+                                .clicked()
+                            {
                                 self.state = None;
                             }
                         }
@@ -171,22 +186,19 @@ impl Request for Http {
                 }
             }
         });
-
         if let Some(Result::Err(error_text)) = &self.result {
-            // ui.horizontal(|ui| ui.label("Error"));
-
+            ui.add_space(15.0);
             ScrollArea::vertical().show(ui, |ui| {
                 let mut error_text = error_text.as_str();
                 ui.add(
                     eframe::egui::TextEdit::multiline(&mut error_text) // for cursor height
-                        .text_color(Color32::RED)
-                        // .desired_rows(10)
-                        .lock_focus(true)
+                        .text_color(color::CRIMSON)
+                        .desired_rows(1)
                         .desired_width(f32::INFINITY),
                 );
             });
         }
-
+        ui.add_space(15.0);
         CollapsingHeader::new("Request")
             .default_open(true)
             .show(ui, |ui| {
@@ -197,25 +209,34 @@ impl Request for Http {
 
                 match self.show_header {
                     true => {
-                        ui.horizontal(|ui| {
+                        if !self.header.is_empty() {
                             ui.group(|ui| {
-                                ui.vertical_centered(|ui| {
-                                    self.header.retain_mut(|(key, value)| {
-                                        ui.horizontal(|ui| {
-                                            ui.text_edit_singleline(key);
-                                            ui.text_edit_singleline(value);
-                                            !ui.button("Del").clicked()
-                                        })
-                                        .inner
-                                    });
-                                    ui.horizontal(|ui| {
-                                        ui.vertical_centered(|ui| {
-                                            if ui.button("Add").clicked() {
-                                                self.header.push(("".to_string(), "".to_string()));
-                                            }
-                                        })
-                                    });
+                                let col_width = (ui.available_width() - 60.0) / 2.0;
+                                self.header.retain_mut(|(key, value)| {
+                                    !ui.horizontal(|ui| {
+                                        ui.add(TextEdit::singleline(key).desired_width(col_width));
+                                        ui.add(
+                                            TextEdit::singleline(value).desired_width(col_width),
+                                        );
+                                        ui.add(
+                                            Button::new(
+                                                WidgetText::from("DEL").color(color::WHITE),
+                                            )
+                                            .fill(color::CRIMSON),
+                                        )
+                                    })
+                                    .inner
+                                    .clicked()
                                 });
+                                // });
+                            });
+                        }
+
+                        ui.horizontal(|ui| {
+                            ui.vertical_centered(|ui| {
+                                if ui.button("Add").clicked() {
+                                    self.header.push(("".to_string(), "".to_string()));
+                                }
                             })
                         });
                     }
@@ -225,6 +246,7 @@ impl Request for Http {
                 }
             });
 
+        ui.add_space(15.0);
         CollapsingHeader::new("Response")
             .default_open(true)
             .show(ui, |ui| {
@@ -337,7 +359,7 @@ impl Http {
                             }
                         }
                         FormParamType::Text => {
-                            ui.text_edit_singleline(value);
+                            ui.add(TextEdit::singleline(value));
                         }
                     }
 

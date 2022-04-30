@@ -1,6 +1,7 @@
 // #![feature(vec_retain_mut)]
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod color;
 mod request;
 mod setting;
 
