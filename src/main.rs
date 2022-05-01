@@ -114,7 +114,7 @@ impl epi::App for Weaver {
             ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
                 ui.horizontal(|ui| {
                     ui.spacing_mut().item_spacing.x = 0.0;
-                    ui.label("powered by ");
+                    ui.label("Powered by ");
                     ui.hyperlink_to("egui", "https://github.com/emilk/egui");
                     ui.label(" and ");
                     ui.hyperlink_to("will", "https://github.com/willser");

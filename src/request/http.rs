@@ -452,27 +452,34 @@ impl Http {
     fn method_select(&mut self, ui: &mut Ui) {
         // TODO Better impl
         if ui
-            .selectable_value(&mut self.method, Method::Get, "GET")
+            .selectable_value(&mut self.method, Method::Get, "Get")
             .changed()
         {
             self.form_param = vec![];
         };
         if ui
-            .selectable_value(&mut self.method, Method::Post, "POST")
-            .changed()
-        {
-            self.form_param = vec![];
-            self.param_type = ParamType::FormData;
-        };
-        if ui
-            .selectable_value(&mut self.method, Method::Put, "PUT")
+            .selectable_value(&mut self.method, Method::Post, "Post")
             .changed()
         {
             self.form_param = vec![];
             self.param_type = ParamType::FormData;
         };
         if ui
-            .selectable_value(&mut self.method, Method::Delete, "DELETE")
+            .selectable_value(&mut self.method, Method::Put, "Put")
+            .changed()
+        {
+            self.form_param = vec![];
+            self.param_type = ParamType::FormData;
+        };
+        if ui
+            .selectable_value(&mut self.method, Method::Delete, "Delete")
+            .changed()
+        {
+            self.form_param = vec![];
+            self.param_type = ParamType::FormData;
+        };
+        if ui
+            .selectable_value(&mut self.method, Method::Patch, "Patch")
             .changed()
         {
             self.form_param = vec![];
@@ -501,6 +508,7 @@ fn get_request_promise(
                 Method::Post => client.post(url),
                 Method::Delete => client.delete(url),
                 Method::Put => client.put(url),
+                Method::Patch => client.patch(url),
             };
             for (k, v) in headers {
                 builder = builder.header(k, v);
@@ -562,6 +570,7 @@ enum Method {
     Get,
     Put,
     Delete,
+    Patch,
 }
 
 impl Default for Method {
