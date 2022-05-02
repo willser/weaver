@@ -12,7 +12,7 @@ It supports `GET` and `POST` `method` and some `Content-Type` like `application/
 
 
 <div align=center>
-    <img src="resources/post.PNG">
+    <img src="resources/screenshot.PNG">
 </div>
 
 More screenshot in [here](https://github.com/willser/weaver/tree/master/resources/)
