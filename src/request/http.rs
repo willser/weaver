@@ -426,15 +426,19 @@ impl Http {
     }
 
     fn query_param_view(&mut self, ui: &mut Ui) {
+        let col_width = (ui.available_width() - 70.0) / 2.0;
         self.form_param.retain_mut(|(key, value, ..)| {
-            ui.horizontal(|ui| {
-                ui.text_edit_singleline(key);
-                ui.text_edit_singleline(value);
-
-                !ui.button("Del").clicked()
+            !ui.horizontal(|ui| {
+                ui.add(TextEdit::singleline(key).desired_width(col_width));
+                ui.add(TextEdit::singleline(value).desired_width(col_width));
+                ui.add(
+                    Button::new(WidgetText::from("DEL").color(color::WHITE)).fill(color::CRIMSON),
+                )
             })
             .inner
+            .clicked()
         });
+        ui.add_space(5.0);
         ui.horizontal(|ui| {
             ui.vertical_centered(|ui| {
                 if ui.button("Add").clicked() {
