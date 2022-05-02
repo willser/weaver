@@ -6,9 +6,10 @@ mod components;
 mod request;
 mod setting;
 
+use crate::egui::Direction;
 use crate::request::Request;
 use crate::setting::Settings;
-use eframe::egui::{CentralPanel, Color32, ScrollArea, WidgetText};
+use eframe::egui::{Align, Button, CentralPanel, Layout, ScrollArea};
 use eframe::{egui, epi};
 use request::http::Http;
 use serde::{Deserialize, Serialize};
@@ -66,61 +67,71 @@ impl epi::App for Weaver {
                 ui.menu_button("Settings", |_ui| self.settings.show_settings = true);
             });
         });
-        egui::SidePanel::left("request_list").show(ctx, |ui| {
-            ScrollArea::vertical().show(ui, |ui| {
-                // ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
-                //     ui.heading(RichText::from("REQUEST").text_style(TextStyle::Heading));
-                // });
+        egui::SidePanel::left("request_list")
+            .max_width(300.0)
+            .show(ctx, |ui| {
+                ScrollArea::vertical().show(ui, |ui| {
+                    // TODO Change to `selectable_value`
+                    // This variable used for save `active request` when click.
+                    // Worry about out of bounds is unnecessary,because active will be set to 0 after remove any `request`.Someday maybe change this implementation.
+                    let mut index: usize = 0;
+                    self.requests.retain(|request| {
+                        let is_active = self.active == index;
+                        ui.horizontal(|ui| {
+                            let request_button = ui
+                                .with_layout(
+                                    Layout::from_main_dir_and_cross_align(
+                                        Direction::TopDown,
+                                        Align::Min,
+                                    )
+                                    .with_main_wrap(false)
+                                    .with_cross_justify(true),
+                                    |ui| {
+                                        ui.add(Button::new(request.request_name()).fill(
+                                            if is_active {
+                                                color::LIGHT_SKY_BLUE
+                                            } else {
+                                                color::GRAY
+                                            },
+                                        ))
+                                    },
+                                )
+                                .inner;
 
-                // TODO Change to `selectable_value`
-                // This variable used for save `active request` when click.
-                // Worry about out of bounds is unnecessary,because active will be set to 0 after remove any `request`.Someday maybe change this implementation.
-                let mut index: usize = 0;
-                self.requests.retain(|request| {
-                    let is_active = self.active == index;
+                            if request_button.clicked() {
+                                self.active = index;
+                            }
+                            if request_button.hovered() && self.active == index {
+                                egui::show_tooltip_text(
+                                    ui.ctx(),
+                                    egui::Id::new("delete_tip"),
+                                    "Right click to delete",
+                                );
+                            }
 
-                    // TODO Better styles.
-                    let widget_text =
-                        WidgetText::from(request.request_name()).color(if is_active {
-                            Color32::BLUE
-                        } else {
-                            Color32::GRAY
-                        });
+                            // Only active request can be deleted
+                            let deleted = is_active && request_button.secondary_clicked();
+                            if deleted {
+                                // TODO double check
+                                self.active = 0
+                            }
+                            index += 1;
+                            !deleted
+                        })
+                        .inner
+                    });
+                });
 
-                    let request_button = ui.button(widget_text);
-                    if request_button.clicked() {
-                        // self.active = index
-                        self.active = index;
-                    }
-                    if request_button.hovered() && self.active == index {
-                        egui::show_tooltip_text(
-                            ui.ctx(),
-                            egui::Id::new("delete_tip"),
-                            "Right click to delete",
-                        );
-                    }
-
-                    // Only active request can be deleted
-                    let deleted = is_active && request_button.secondary_clicked();
-                    if deleted {
-                        // TODO double check
-                        self.active = 0
-                    }
-                    index += 1;
-                    !deleted
+                ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
+                    ui.horizontal(|ui| {
+                        ui.spacing_mut().item_spacing.x = 0.0;
+                        ui.label("Powered by ");
+                        ui.hyperlink_to("egui", "https://github.com/emilk/egui");
+                        ui.label(" and ");
+                        ui.hyperlink_to("will", "https://github.com/willser");
+                    });
                 });
             });
-
-            ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
-                ui.horizontal(|ui| {
-                    ui.spacing_mut().item_spacing.x = 0.0;
-                    ui.label("Powered by ");
-                    ui.hyperlink_to("egui", "https://github.com/emilk/egui");
-                    ui.label(" and ");
-                    ui.hyperlink_to("will", "https://github.com/willser");
-                });
-            });
-        });
 
         CentralPanel::default().show(ctx, |ui| match self.requests.get_mut(self.active) {
             None => {}
