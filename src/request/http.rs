@@ -1,6 +1,7 @@
-use crate::color;
 use crate::request::Request;
+use crate::{color, components};
 
+use crate::egui::Vec2;
 use eframe::egui::{
     Align, Button, CollapsingHeader, ComboBox, Layout, ScrollArea, TextEdit, Ui, WidgetText,
 };
@@ -141,8 +142,11 @@ impl Request for Http {
             match &self.state {
                 None => {
                     // TODO width of button https://github.com/emilk/egui/blob/master/egui_demo_lib/src/demo/tests.rs
-                    let send_button = ui.add(
-                        Button::new(WidgetText::from(" SEND ").color(color::WHITE))
+
+                    let send_button = components::widget_with_size(
+                        ui,
+                        Vec2::new(80.0, 18.0),
+                        Button::new(WidgetText::from("SEND").color(color::WHITE))
                             .fill(color::DODER_BLUE),
                     );
 
@@ -169,12 +173,13 @@ impl Request for Http {
 
                     match promise.ready() {
                         None => {
-                            if ui
-                                .add(
-                                    Button::new(WidgetText::from("CANCEL").color(color::WHITE))
-                                        .fill(color::CRIMSON),
-                                )
-                                .clicked()
+                            if components::widget_with_size(
+                                ui,
+                                Vec2::new(80.0, 18.0),
+                                Button::new(WidgetText::from("CANCEL").color(color::WHITE))
+                                    .fill(color::CRIMSON),
+                            )
+                            .clicked()
                             {
                                 self.state = None;
                             }
@@ -203,16 +208,17 @@ impl Request for Http {
         CollapsingHeader::new("Request")
             .default_open(true)
             .show(ui, |ui| {
+                ui.add_space(5.0);
                 ui.horizontal(|ui| {
                     ui.selectable_value(&mut self.show_header, true, "HEADER");
                     ui.selectable_value(&mut self.show_header, false, "PARAM");
                 });
-
+                ui.add_space(5.0);
                 match self.show_header {
                     true => {
                         if !self.header.is_empty() {
                             ui.group(|ui| {
-                                let col_width = (ui.available_width() - 60.0) / 2.0;
+                                let col_width = (ui.available_width() - 70.0) / 2.0;
                                 self.header.retain_mut(|(key, value)| {
                                     !ui.horizontal(|ui| {
                                         ui.add(TextEdit::singleline(key).desired_width(col_width));
@@ -229,17 +235,16 @@ impl Request for Http {
                                     .inner
                                     .clicked()
                                 });
-                                // });
+                                ui.add_space(5.0);
+                                ui.horizontal(|ui| {
+                                    ui.vertical_centered(|ui| {
+                                        if ui.button("Add").clicked() {
+                                            self.header.push(("".to_string(), "".to_string()));
+                                        }
+                                    })
+                                });
                             });
                         }
-
-                        ui.horizontal(|ui| {
-                            ui.vertical_centered(|ui| {
-                                if ui.button("Add").clicked() {
-                                    self.header.push(("".to_string(), "".to_string()));
-                                }
-                            })
-                        });
                     }
                     false => {
                         self.param_view(ui);
@@ -309,7 +314,9 @@ impl Http {
         ui.horizontal(|ui| {
             ui.group(|ui| {
                 ui.vertical_centered(|ui| {
+                    ui.add_space(5.0);
                     self.param_type_view(ui);
+                    ui.add_space(5.0);
 
                     match self.param_type {
                         ParamType::FormData => {
@@ -333,49 +340,69 @@ impl Http {
 
     fn form_data_param_view(&mut self, ui: &mut Ui) {
         let mut label = 0;
+        let col_width = (ui.available_width() - 180.0) / 2.0;
         self.form_param
             .retain_mut(|(key, value, path_buf, form_param_type)| {
                 ui.horizontal(|ui| {
-                    ui.text_edit_singleline(key);
-                    // let string = get_uuid();
-                    label += 1;
-                    ComboBox::from_id_source(label.to_string() + "form_param_type_combo_box")
-                        .selected_text(format!("{:?}", form_param_type))
-                        .show_ui(ui, |ui| {
-                            ui.selectable_value(form_param_type, FormParamType::Text, "Text");
-                            ui.selectable_value(form_param_type, FormParamType::File, "File");
-                        });
+                    !ui.horizontal(|ui| {
+                        ui.add(TextEdit::singleline(key).desired_width(col_width));
 
-                    // TODO refactor following code
-                    match form_param_type {
-                        FormParamType::File => {
-                            let file_button = ui.button(match path_buf {
-                                Some(name) => name
-                                    .file_name()
-                                    .unwrap_or_else(|| OsStr::new("Open file…"))
-                                    .to_str()
-                                    .unwrap_or("Open file…"),
-                                _ => "Open file…",
+                        label += 1;
+                        // TODO center
+                        ComboBox::from_id_source(label.to_string() + "form_param_type_combo_box")
+                            .selected_text(format!("{:?}", form_param_type))
+                            .width(70.0)
+                            .show_ui(ui, |ui| {
+                                ui.selectable_value(form_param_type, FormParamType::Text, "Text");
+                                ui.selectable_value(form_param_type, FormParamType::File, "File");
                             });
-                            if file_button.clicked() {
-                                if let Some(path) = rfd::FileDialog::new().pick_file() {
-                                    *path_buf = Some(path);
+
+                        match form_param_type {
+                            FormParamType::File => {
+                                let file_button = components::widget_with_size(
+                                    ui,
+                                    Vec2::new(col_width, 18.0),
+                                    Button::new(match path_buf {
+                                        Some(name) => name
+                                            .file_name()
+                                            .unwrap_or_else(|| OsStr::new("Open file…"))
+                                            .to_str()
+                                            .unwrap_or("Open file…"),
+                                        _ => "Open file…",
+                                    }),
+                                );
+                                if file_button.clicked() {
+                                    if let Some(path) = rfd::FileDialog::new().pick_file() {
+                                        *path_buf = Some(path);
+                                    }
+                                }
+
+                                if file_button.secondary_clicked() {
+                                    *path_buf = None;
                                 }
                             }
-
-                            if file_button.secondary_clicked() {
-                                *path_buf = None;
+                            FormParamType::Text => {
+                                components::widget_with_size(
+                                    ui,
+                                    Vec2::new(col_width, 18.0),
+                                    TextEdit::singleline(value),
+                                );
                             }
                         }
-                        FormParamType::Text => {
-                            ui.add(TextEdit::singleline(value));
-                        }
-                    }
 
-                    !ui.button("Del").clicked()
+                        components::widget_with_size(
+                            ui,
+                            Vec2::new(70.0, 18.0),
+                            Button::new(WidgetText::from("DEL").color(color::WHITE))
+                                .fill(color::CRIMSON),
+                        )
+                    })
+                    .inner
+                    .clicked()
                 })
                 .inner
             });
+        ui.add_space(5.0);
         ui.horizontal(|ui| {
             ui.vertical_centered(|ui| {
                 if ui.button("Add").clicked() {
@@ -399,15 +426,19 @@ impl Http {
     }
 
     fn query_param_view(&mut self, ui: &mut Ui) {
+        let col_width = (ui.available_width() - 70.0) / 2.0;
         self.form_param.retain_mut(|(key, value, ..)| {
-            ui.horizontal(|ui| {
-                ui.text_edit_singleline(key);
-                ui.text_edit_singleline(value);
-
-                !ui.button("Del").clicked()
+            !ui.horizontal(|ui| {
+                ui.add(TextEdit::singleline(key).desired_width(col_width));
+                ui.add(TextEdit::singleline(value).desired_width(col_width));
+                ui.add(
+                    Button::new(WidgetText::from("DEL").color(color::WHITE)).fill(color::CRIMSON),
+                )
             })
             .inner
+            .clicked()
         });
+        ui.add_space(5.0);
         ui.horizontal(|ui| {
             ui.vertical_centered(|ui| {
                 if ui.button("Add").clicked() {
@@ -425,27 +456,34 @@ impl Http {
     fn method_select(&mut self, ui: &mut Ui) {
         // TODO Better impl
         if ui
-            .selectable_value(&mut self.method, Method::Get, "GET")
+            .selectable_value(&mut self.method, Method::Get, "Get")
             .changed()
         {
             self.form_param = vec![];
         };
         if ui
-            .selectable_value(&mut self.method, Method::Post, "POST")
-            .changed()
-        {
-            self.form_param = vec![];
-            self.param_type = ParamType::FormData;
-        };
-        if ui
-            .selectable_value(&mut self.method, Method::Put, "PUT")
+            .selectable_value(&mut self.method, Method::Post, "Post")
             .changed()
         {
             self.form_param = vec![];
             self.param_type = ParamType::FormData;
         };
         if ui
-            .selectable_value(&mut self.method, Method::Delete, "DELETE")
+            .selectable_value(&mut self.method, Method::Put, "Put")
+            .changed()
+        {
+            self.form_param = vec![];
+            self.param_type = ParamType::FormData;
+        };
+        if ui
+            .selectable_value(&mut self.method, Method::Delete, "Delete")
+            .changed()
+        {
+            self.form_param = vec![];
+            self.param_type = ParamType::FormData;
+        };
+        if ui
+            .selectable_value(&mut self.method, Method::Patch, "Patch")
             .changed()
         {
             self.form_param = vec![];
@@ -474,6 +512,7 @@ fn get_request_promise(
                 Method::Post => client.post(url),
                 Method::Delete => client.delete(url),
                 Method::Put => client.put(url),
+                Method::Patch => client.patch(url),
             };
             for (k, v) in headers {
                 builder = builder.header(k, v);
@@ -535,6 +574,7 @@ enum Method {
     Get,
     Put,
     Delete,
+    Patch,
 }
 
 impl Default for Method {
