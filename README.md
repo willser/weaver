@@ -5,11 +5,12 @@ Weaver is a simple,easy-to-use and cross-platform API tool.Inspired by [hoppscot
 It uses the Rust [egui](https://github.com/emilk/egui/) GUI library.
 
 ### Features
-For now,here is an initial version `weaver` could be used.
-It supports `GET` and `POST` `method` and some `Content-Type` like `application/json`.
+
+- `Get`,`Post` and other method request
+- `application/json`,`multipart/form-data` and more `content-type`
+- Custom request header
 
 ### UI
-
 
 <div align=center>
     <img src="resources/screenshot.PNG">
@@ -21,7 +22,6 @@ More screenshot in [here](https://github.com/willser/weaver/tree/master/resource
 
 There are something need to do I can be sure now.
 
-- More `method` and `Content-Type` support
 - Better UI and style
 - Icon
 - Default language font
