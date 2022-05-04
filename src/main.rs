@@ -3,10 +3,13 @@
 
 mod color;
 mod components;
+mod curl;
 mod request;
 mod setting;
 mod style;
 
+use crate::curl::Curl;
+use crate::egui::Direction;
 use crate::request::{ClickType, Request};
 use crate::setting::Settings;
 use crate::style::WeaverStyle;
@@ -21,16 +24,12 @@ pub struct Weaver {
     requests: Vec<Http>,
     active: usize,
     settings: Settings,
+    #[serde(skip)]
+    curl: Curl,
     // TODO Make it out of `Weaver` struct.Use lazy_static maybe better.
     #[serde(skip)]
     style: Option<WeaverStyle>,
 }
-
-/// Unused for now
-// #[derive(Deserialize, Serialize)]
-// enum Request {
-//     HTTP(Http),
-// }
 
 impl Default for Weaver {
     fn default() -> Self {
@@ -38,6 +37,7 @@ impl Default for Weaver {
             requests: vec![],
             active: 0,
             settings: Default::default(),
+            curl: Default::default(),
             style: None,
         }
     }
@@ -52,6 +52,7 @@ impl App for Weaver {
         // ctx.set_style()
         self.settings.set(ctx);
         self.settings.draw_settings_window(ctx);
+        self.curl.draw_curl_window(ctx);
 
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
             // The top panel is often a good place for a menu bar:
@@ -59,6 +60,9 @@ impl App for Weaver {
                 ui.menu_button("New", |ui| {
                     if ui.button("Http").clicked() {
                         self.requests.insert(0, Http::default());
+                    }
+                    if ui.button("From cURL").clicked() {
+                        self.curl.show_curl_window = true
                     }
                 });
 
