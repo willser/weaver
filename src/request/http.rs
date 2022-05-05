@@ -48,7 +48,7 @@ struct Response {
 }
 
 #[derive(Deserialize, Serialize, Eq, PartialEq, Debug, Clone)]
-enum FormParamType {
+pub enum FormParamType {
     File,
     Text,
 }
@@ -354,6 +354,47 @@ impl Request for Http {
 }
 
 impl Http {
+    pub fn from_curl(
+        url: String,
+        method: String,
+        header: Vec<(String, String)>,
+        text_param: String,
+        form_param: Vec<(String, String, Option<PathBuf>, FormParamType)>,
+        param_type: String,
+    ) -> Result<Self, String> {
+        // TODO refactor
+        let method = match method.as_str() {
+            "GET" => Method::Get,
+            "DELETE" => Method::Delete,
+            "PUT" => Method::Put,
+            "POST" => Method::Post,
+            "PATCH" => Method::Patch,
+            _ => {
+                return Err("No such method".to_string());
+            }
+        };
+
+        let param_type = if param_type.contains("application/json") {
+            ParamType::Json
+        } else if param_type.contains("application/json") {
+            ParamType::Json
+        } else {
+            ParamType::Other
+        };
+
+        Ok(Self {
+            id: get_uuid(),
+            name: "New http request".to_string(),
+            url,
+            method,
+            header,
+            text_param,
+            form_param,
+            param_type,
+            ..Default::default()
+        })
+    }
+
     fn param_type_view(&mut self, ui: &mut Ui) {
         ui.horizontal(|ui| match self.method {
             Method::Get => {

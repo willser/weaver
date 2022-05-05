@@ -1,22 +1,23 @@
 // #![feature(vec_retain_mut)]
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use eframe::egui::{CentralPanel, ScrollArea, Style, Visuals};
+use eframe::{egui, App, Frame, Storage};
+use serde::{Deserialize, Serialize};
+
+use request::http::Http;
+
+use crate::curl::Curl;
+use crate::request::{ClickType, Request};
+use crate::setting::Settings;
+use crate::style::WeaverStyle;
+
 mod color;
 mod components;
 mod curl;
 mod request;
 mod setting;
 mod style;
-
-use crate::curl::Curl;
-use crate::egui::Direction;
-use crate::request::{ClickType, Request};
-use crate::setting::Settings;
-use crate::style::WeaverStyle;
-use eframe::egui::{CentralPanel, ScrollArea, Style, Visuals};
-use eframe::{egui, App, Frame, Storage};
-use request::http::Http;
-use serde::{Deserialize, Serialize};
 
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
 #[derive(Deserialize, Serialize)]
@@ -52,7 +53,10 @@ impl App for Weaver {
         // ctx.set_style()
         self.settings.set(ctx);
         self.settings.draw_settings_window(ctx);
-        self.curl.draw_curl_window(ctx);
+        self.curl.draw_curl_window(ctx, |http| {
+            self.requests.insert(0, http);
+            self.active = 0;
+        });
 
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
             // The top panel is often a good place for a menu bar:
@@ -62,7 +66,8 @@ impl App for Weaver {
                         self.requests.insert(0, Http::default());
                     }
                     if ui.button("From cURL").clicked() {
-                        self.curl.show_curl_window = true
+                        self.curl.show_curl_window = true;
+                        self.curl.temp_show = true;
                     }
                 });
 
