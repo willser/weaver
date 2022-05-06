@@ -10,7 +10,7 @@ authors = ["will <https://github.com/willser>"]
 # Epi and web+native backends
 # The dir where store in `https://docs.rs/directories-next/2.0.0/directories_next/struct.ProjectDirs.html#method.data_dir`
 # Tracing this issue to change dir: `https://github.com/emilk/egui/issues/914`
-eframe = {version = "0.17.0" ,features=["default","persistence"]}
+eframe = {version = "0.18.0" ,features=["default","persistence"]}
 # Deserialize/Serialize
 serde = { version = "1", features = ["derive"]}
 # Create request id

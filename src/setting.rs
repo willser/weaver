@@ -1,10 +1,9 @@
 use eframe::egui;
-use eframe::egui::style::TextStyle::{Body, Button, Heading, Small};
+use eframe::egui::style::TextStyle::{Body, Button, Heading, Monospace, Small};
 use eframe::egui::FontFamily::Proportional;
 use eframe::egui::{
     ComboBox, Context, DragValue, FontData, FontDefinitions, FontFamily, FontId, Grid, Window,
 };
-use eframe::epi::egui::style::TextStyle::Monospace;
 use font_kit::family_name::FamilyName;
 use font_kit::handle::Handle;
 use font_kit::properties::Properties;

@@ -10,7 +10,7 @@ use crate::egui::Direction;
 use crate::request::Request;
 use crate::setting::Settings;
 use eframe::egui::{Align, Button, CentralPanel, Layout, ScrollArea};
-use eframe::{egui, epi};
+use eframe::{egui, App, Frame, Storage};
 use request::http::Http;
 use serde::{Deserialize, Serialize};
 
@@ -38,10 +38,10 @@ impl Default for Weaver {
     }
 }
 
-impl epi::App for Weaver {
+impl App for Weaver {
     /// Called each time the UI needs repainting, which may be many times per second.
     /// Put your widgets into a `SidePanel`, `TopPanel`, `CentralPanel`, `Window` or `Area`.
-    fn update(&mut self, ctx: &egui::Context, _frame: &epi::Frame) {
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut Frame) {
         // let Self { requests } = self;
         // TODO styles
         // ctx.set_style()
@@ -144,33 +144,43 @@ impl epi::App for Weaver {
     }
 
     /// Called once before the first frame.
-    fn setup(
-        &mut self,
-        ctx: &egui::Context,
-        _frame: &epi::Frame,
-        storage: Option<&dyn epi::Storage>,
-    ) {
-        // Load previous app state (if any).
-        if let Some(storage) = storage {
-            // TODO change key in feature
-            *self = epi::get_value(storage, epi::APP_KEY).unwrap_or_default();
-        }
-        // Init font after load data from local
-        self.settings.local_settings(ctx);
-    }
+    // fn setup(
+    //     &mut self,
+    //     ctx: &egui::Context,
+    //     _frame: &epi::Frame,
+    //     storage: Option<&dyn epi::Storage>,
+    // ) {
+    //     // Load previous app state (if any).
+    //     if let Some(storage) = storage {
+    //         // TODO change key in feature
+    //         *self = epi::get_value(storage, epi::APP_KEY).unwrap_or_default();
+    //     }
+    //     // Init font after load data from local
+    //     self.settings.local_settings(ctx);
+    // }
 
-    fn save(&mut self, storage: &mut dyn epi::Storage) {
+    fn save(&mut self, storage: &mut dyn Storage) {
         // TODO change key in feature
-        epi::set_value(storage, epi::APP_KEY, self);
+        eframe::set_value(storage, eframe::APP_KEY, self);
     }
 
-    fn name(&self) -> &str {
-        "weaver"
-    }
+    // fn name(&self) -> &str {
+    //     "weaver"
+    // }
 }
 
 fn main() {
-    let app = Weaver::default();
     let native_options = eframe::NativeOptions::default();
-    eframe::run_native(Box::new(app), native_options);
+    eframe::run_native(
+        "weaver",
+        native_options,
+        Box::new(|creation_context| {
+            let mut weaver: Weaver = match creation_context.storage {
+                None => Default::default(),
+                Some(storage) => eframe::get_value(storage, eframe::APP_KEY).unwrap_or_default(),
+            };
+            weaver.settings.local_settings(&creation_context.egui_ctx);
+            Box::new(weaver)
+        }),
+    );
 }
