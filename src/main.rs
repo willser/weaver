@@ -6,10 +6,10 @@ mod components;
 mod request;
 mod setting;
 
-use crate::egui::Direction;
-use crate::request::Request;
+use crate::request::{ClickType, Request};
 use crate::setting::Settings;
-use eframe::egui::{Align, Button, CentralPanel, Layout, ScrollArea};
+use eframe::egui::style::Margin;
+use eframe::egui::{CentralPanel, ScrollArea};
 use eframe::{egui, App, Frame, Storage};
 use request::http::Http;
 use serde::{Deserialize, Serialize};
@@ -68,7 +68,13 @@ impl App for Weaver {
             });
         });
         egui::SidePanel::left("request_list")
-            .max_width(300.0)
+            .frame(egui::Frame {
+                inner_margin: Margin::same(0.0),
+                outer_margin: Margin::same(0.0),
+                fill: color::GRAY,
+                ..egui::Frame::default()
+            })
+            .width_range(100.0..=300.0)
             .show(ctx, |ui| {
                 ScrollArea::vertical().show(ui, |ui| {
                     // TODO Change to `selectable_value`
@@ -76,49 +82,16 @@ impl App for Weaver {
                     // Worry about out of bounds is unnecessary,because active will be set to 0 after remove any `request`.Someday maybe change this implementation.
                     let mut index: usize = 0;
                     self.requests.retain(|request| {
-                        let is_active = self.active == index;
-                        ui.horizontal(|ui| {
-                            let request_button = ui
-                                .with_layout(
-                                    Layout::from_main_dir_and_cross_align(
-                                        Direction::TopDown,
-                                        Align::Min,
-                                    )
-                                    .with_main_wrap(false)
-                                    .with_cross_justify(true),
-                                    |ui| {
-                                        ui.add(Button::new(request.request_name()).fill(
-                                            if is_active {
-                                                color::LIGHT_SKY_BLUE
-                                            } else {
-                                                color::GRAY
-                                            },
-                                        ))
-                                    },
-                                )
-                                .inner;
-
-                            if request_button.clicked() {
+                        let mut result = true;
+                        match request.request_name_view(self.active == index, ui).inner {
+                            ClickType::Click => {
                                 self.active = index;
                             }
-                            if request_button.hovered() && self.active == index {
-                                egui::show_tooltip_text(
-                                    ui.ctx(),
-                                    egui::Id::new("delete_tip"),
-                                    "Right click to delete",
-                                );
-                            }
-
-                            // Only active request can be deleted
-                            let deleted = is_active && request_button.secondary_clicked();
-                            if deleted {
-                                // TODO double check
-                                self.active = 0
-                            }
-                            index += 1;
-                            !deleted
-                        })
-                        .inner
+                            ClickType::Delete => result = false,
+                            _ => {}
+                        };
+                        index += 1;
+                        result
                     });
                 });
 

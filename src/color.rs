@@ -14,3 +14,6 @@ pub const LIGHT_SKY_BLUE: Color32 = Color32::from_rgb(135, 206, 250);
 
 /// #9E9E9E
 pub const GRAY: Color32 = Color32::from_rgb(158, 158, 158);
+
+/// #000000
+pub const BLACK: Color32 = Color32::from_rgb(0, 0, 0);
