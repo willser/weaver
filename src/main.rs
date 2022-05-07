@@ -83,7 +83,7 @@ impl App for Weaver {
                     let mut index: usize = 0;
                     self.requests.retain(|request| {
                         let mut result = true;
-                        match request.request_name_view(self.active == index, ui).inner {
+                        match request.request_name_view(self.active == index, ui) {
                             ClickType::Click => {
                                 self.active = index;
                             }

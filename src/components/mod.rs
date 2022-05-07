@@ -1,3 +1,7 @@
+mod frame;
+
+pub use frame::Frame;
+
 use crate::egui::Response;
 use eframe::egui::{Rect, Ui, Vec2, Widget};
 
