@@ -149,6 +149,7 @@ fn get_font(font_family: String) -> FontDefinitions {
 }
 
 #[cfg(windows)]
+#[allow(clippy::single_match)]
 pub fn get_default_font() -> String {
     if let Some((_, lang)) = locale_config::Locale::current().tags().next() {
         let lang_str = lang.to_string();

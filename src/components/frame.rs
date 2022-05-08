@@ -35,11 +35,13 @@ impl Default for Frame {
 }
 
 impl Frame {
+    #[allow(dead_code)]
     pub fn none() -> Self {
         Self::default()
     }
 
     /// For when you want to group a few widgets together within a frame.
+    #[allow(dead_code)]
     pub fn group(style: &Style) -> Self {
         Self {
             inner_margin: Margin::same(6.0), // same and symmetric looks best in corners when nesting groups
@@ -49,6 +51,7 @@ impl Frame {
         }
     }
 
+    #[allow(dead_code)]
     pub(crate) fn side_top_panel(style: &Style) -> Self {
         Self {
             inner_margin: Margin::symmetric(8.0, 2.0),
@@ -59,6 +62,7 @@ impl Frame {
         }
     }
 
+    #[allow(dead_code)]
     pub(crate) fn central_panel(style: &Style) -> Self {
         Self {
             inner_margin: Margin::same(8.0),
@@ -69,6 +73,7 @@ impl Frame {
         }
     }
 
+    #[allow(dead_code)]
     pub fn window(style: &Style) -> Self {
         Self {
             inner_margin: style.spacing.window_margin,
@@ -80,6 +85,7 @@ impl Frame {
         }
     }
 
+    #[allow(dead_code)]
     pub fn menu(style: &Style) -> Self {
         Self {
             inner_margin: Margin::same(1.0),
@@ -91,6 +97,7 @@ impl Frame {
         }
     }
 
+    #[allow(dead_code)]
     pub fn popup(style: &Style) -> Self {
         Self {
             inner_margin: style.spacing.window_margin,
@@ -106,6 +113,7 @@ impl Frame {
     ///
     /// In bright mode this will be very bright,
     /// and in dark mode this will be very dark.
+    #[allow(dead_code)]
     pub fn canvas(style: &Style) -> Self {
         Self {
             inner_margin: Margin::same(2.0),
@@ -117,6 +125,7 @@ impl Frame {
     }
 
     /// A dark canvas to draw on.
+    #[allow(dead_code)]
     pub fn dark_canvas(style: &Style) -> Self {
         Self {
             fill: Color32::from_black_alpha(250),
@@ -126,43 +135,44 @@ impl Frame {
 }
 
 impl Frame {
+    #[allow(dead_code)]
     pub fn fill(mut self, fill: Color32) -> Self {
         self.fill = fill;
         self
     }
 
+    #[allow(dead_code)]
     pub fn stroke(mut self, stroke: Stroke) -> Self {
         self.stroke = stroke;
         self
     }
 
+    #[allow(dead_code)]
     pub fn rounding(mut self, rounding: impl Into<Rounding>) -> Self {
         self.rounding = rounding.into();
         self
     }
 
     /// Margin within the painted frame.
+    #[allow(dead_code)]
     pub fn inner_margin(mut self, inner_margin: impl Into<Margin>) -> Self {
         self.inner_margin = inner_margin.into();
         self
     }
 
     /// Margin outside the painted frame.
+    #[allow(dead_code)]
     pub fn outer_margin(mut self, outer_margin: impl Into<Margin>) -> Self {
         self.outer_margin = outer_margin.into();
         self
     }
 
-    #[deprecated = "Renamed inner_margin in egui 0.18"]
-    pub fn margin(self, margin: impl Into<Margin>) -> Self {
-        self.inner_margin(margin)
-    }
-
+    #[allow(dead_code)]
     pub fn shadow(mut self, shadow: Shadow) -> Self {
         self.shadow = shadow;
         self
     }
-
+    #[allow(dead_code)]
     pub fn multiply_with_opacity(mut self, opacity: f32) -> Self {
         self.fill = self.fill.linear_multiply(opacity);
         self.stroke.color = self.stroke.color.linear_multiply(opacity);

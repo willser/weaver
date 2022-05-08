@@ -13,6 +13,7 @@ pub const CRIMSON: Color32 = Color32::from_rgb(220, 20, 60);
 pub const LIGHT_SKY_BLUE: Color32 = Color32::from_rgb(135, 206, 250);
 
 /// #9E9E9E
+#[allow(dead_code)]
 pub const GRAY: Color32 = Color32::from_rgb(158, 158, 158);
 
 /// #000000

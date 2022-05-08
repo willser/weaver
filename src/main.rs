@@ -5,10 +5,11 @@ mod color;
 mod components;
 mod request;
 mod setting;
+mod style;
 
 use crate::request::{ClickType, Request};
 use crate::setting::Settings;
-use eframe::egui::style::Margin;
+use crate::style::WeaverStyle;
 use eframe::egui::{CentralPanel, ScrollArea};
 use eframe::{egui, App, Frame, Storage};
 use request::http::Http;
@@ -20,6 +21,9 @@ pub struct Weaver {
     requests: Vec<Http>,
     active: usize,
     settings: Settings,
+    // TODO Make it out of `Weaver` struct.Use lazy_static maybe better.
+    #[serde(skip)]
+    style: Option<WeaverStyle>,
 }
 
 /// Unused for now
@@ -34,6 +38,7 @@ impl Default for Weaver {
             requests: vec![],
             active: 0,
             settings: Default::default(),
+            style: None,
         }
     }
 }
@@ -68,22 +73,19 @@ impl App for Weaver {
             });
         });
         egui::SidePanel::left("request_list")
-            .frame(egui::Frame {
-                inner_margin: Margin::same(0.0),
-                outer_margin: Margin::same(0.0),
-                fill: color::GRAY,
-                ..egui::Frame::default()
-            })
             .width_range(100.0..=300.0)
             .show(ctx, |ui| {
+                ui.add_space(2.0);
                 ScrollArea::vertical().show(ui, |ui| {
                     // TODO Change to `selectable_value`
                     // This variable used for save `active request` when click.
                     // Worry about out of bounds is unnecessary,because active will be set to 0 after remove any `request`.Someday maybe change this implementation.
                     let mut index: usize = 0;
+                    let style = &self.style.as_ref().unwrap();
                     self.requests.retain(|request| {
                         let mut result = true;
-                        match request.request_name_view(self.active == index, ui) {
+
+                        match request.request_name_view(self.active == index, ui, style) {
                             ClickType::Click => {
                                 self.active = index;
                             }
@@ -95,15 +97,15 @@ impl App for Weaver {
                     });
                 });
 
-                ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
-                    ui.horizontal(|ui| {
-                        ui.spacing_mut().item_spacing.x = 0.0;
-                        ui.label("Powered by ");
-                        ui.hyperlink_to("egui", "https://github.com/emilk/egui");
-                        ui.label(" and ");
-                        ui.hyperlink_to("will", "https://github.com/willser");
-                    });
-                });
+                // ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
+                //     ui.horizontal(|ui| {
+                //         ui.spacing_mut().item_spacing.x = 0.0;
+                //         ui.label("Powered by ");
+                //         ui.hyperlink_to("egui", "https://github.com/emilk/egui");
+                //         ui.label(" and ");
+                //         ui.hyperlink_to("will", "https://github.com/willser");
+                //     });
+                // });
             });
 
         CentralPanel::default().show(ctx, |ui| match self.requests.get_mut(self.active) {
@@ -153,6 +155,7 @@ fn main() {
                 Some(storage) => eframe::get_value(storage, eframe::APP_KEY).unwrap_or_default(),
             };
             weaver.settings.local_settings(&creation_context.egui_ctx);
+            weaver.style = Some(WeaverStyle::create(&creation_context.egui_ctx));
             Box::new(weaver)
         }),
     );
