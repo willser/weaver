@@ -1,4 +1,6 @@
-use eframe::egui::{ColorImage, Context, TextureHandle};
+use crate::color;
+use eframe::egui::style::{WidgetVisuals, Widgets};
+use eframe::egui::{ColorImage, Context, Rounding, Stroke, TextureHandle};
 
 pub struct WeaverStyle {
     pub del_btn: TextureHandle,
@@ -24,3 +26,73 @@ fn load_image_from_memory(image_data: &[u8]) -> Result<ColorImage, image::ImageE
 }
 
 pub const DEL_BTN_SIZE: f32 = 12.0;
+
+pub fn get_widgets() -> Widgets {
+    Widgets {
+        noninteractive: WidgetVisuals {
+            bg_fill: color::BLACK,
+            bg_stroke: Stroke {
+                width: 1.0,
+                color: color::BLACK,
+            },
+            rounding: Rounding::none(),
+            fg_stroke: Stroke {
+                width: 1.0,
+                color: color::BLACK,
+            },
+            expansion: 5.0,
+        },
+        inactive: WidgetVisuals {
+            bg_fill: color::BLACK,
+            bg_stroke: Stroke {
+                width: 1.0,
+                color: color::GRAY,
+            },
+            rounding: Rounding::none(),
+            fg_stroke: Stroke {
+                width: 1.0,
+                color: color::BLACK,
+            },
+            expansion: 5.0,
+        },
+        hovered: WidgetVisuals {
+            bg_fill: color::BLACK,
+            bg_stroke: Stroke {
+                width: 1.0,
+                color: color::LIGHT_SKY_BLUE,
+            },
+            rounding: Rounding::none(),
+            fg_stroke: Stroke {
+                width: 1.0,
+                color: color::LIGHT_SKY_BLUE,
+            },
+            expansion: 5.0,
+        },
+        active: WidgetVisuals {
+            bg_fill: color::BLACK,
+            bg_stroke: Stroke {
+                width: 1.0,
+                color: color::BLACK,
+            },
+            rounding: Rounding::none(),
+            fg_stroke: Stroke {
+                width: 1.0,
+                color: color::BLACK,
+            },
+            expansion: 5.0,
+        },
+        open: WidgetVisuals {
+            bg_fill: color::BLACK,
+            bg_stroke: Stroke {
+                width: 1.0,
+                color: color::BLACK,
+            },
+            rounding: Rounding::none(),
+            fg_stroke: Stroke {
+                width: 1.0,
+                color: color::BLACK,
+            },
+            expansion: 5.0,
+        },
+    }
+}

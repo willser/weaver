@@ -1,9 +1,10 @@
 use crate::request::Request;
 use crate::{color, components};
 
-use crate::egui::Vec2;
+use crate::egui::{FontSelection, Vec2};
 use eframe::egui::{
-    Align, Button, CollapsingHeader, ComboBox, Layout, ScrollArea, TextEdit, Ui, WidgetText,
+    Align, Button, CollapsingHeader, ComboBox, Layout, Pos2, Rect, Rounding, ScrollArea, Stroke,
+    TextEdit, Ui, WidgetText,
 };
 use poll_promise::Promise;
 use rand::{distributions::Alphanumeric, Rng};
@@ -119,10 +120,33 @@ impl Request for Http {
     }
 
     fn view(&mut self, ui: &mut Ui) {
+        ui.add_space(10.0);
         ui.with_layout(Layout::left_to_right().with_cross_align(Align::Min), |ui| {
-            // ui.add(Label::new("REQUEST NAME: ").wrap(true));
+            let id = FontSelection::default().resolve(ui.style());
+            let row_height = ui.fonts().row_height(&id);
+            // ui.add_space(5.0);
+            let mut pos2 = ui.next_widget_position();
+            // TODO This value may be be decided by egui style,explore later
+            pos2.y -= 6.0;
+
+            let rect = Rect {
+                min: pos2,
+                max: Pos2 {
+                    x: pos2.x + 5.0,
+                    y: pos2.y + row_height + 16.0,
+                },
+            };
+
+            ui.painter_at(rect).rect(
+                rect,
+                Rounding::none(),
+                color::LIGHT_SKY_BLUE,
+                Stroke::none(),
+            );
+            ui.add_space(15.0);
+            ui.style_mut().visuals.widgets = crate::style::get_widgets();
             TextEdit::singleline(&mut self.name)
-                .desired_width(f32::INFINITY)
+                .desired_width(ui.available_width() - 10.0)
                 .show(ui);
         });
         ui.add_space(15.0);
