@@ -2,6 +2,7 @@ use crate::request::Request;
 use crate::{color, components};
 
 use crate::egui::{FontSelection, Vec2};
+use eframe::egui::style::Margin;
 use eframe::egui::{
     Align, Button, CollapsingHeader, ComboBox, Layout, Pos2, Rect, Rounding, ScrollArea, Stroke,
     TextEdit, Ui, WidgetText,
@@ -120,11 +121,10 @@ impl Request for Http {
     }
 
     fn view(&mut self, ui: &mut Ui) {
+        let id = FontSelection::default().resolve(ui.style());
+        let row_height = ui.fonts().row_height(&id);
         ui.add_space(10.0);
         ui.with_layout(Layout::left_to_right().with_cross_align(Align::Min), |ui| {
-            let id = FontSelection::default().resolve(ui.style());
-            let row_height = ui.fonts().row_height(&id);
-            // ui.add_space(5.0);
             let mut pos2 = ui.next_widget_position();
             // TODO This value may be be decided by egui style,explore later
             pos2.y -= 6.0;
@@ -151,18 +151,21 @@ impl Request for Http {
         });
         ui.add_space(15.0);
         ui.with_layout(Layout::left_to_right().with_cross_align(Align::Min), |ui| {
+            ui.style_mut().visuals.widgets = crate::style::get_widgets();
+            ui.add_space(15.0);
+
             ComboBox::from_id_source("comboBox")
                 .selected_text(format!("{:?}", self.method))
                 .show_ui(ui, |ui| {
                     self.method_select(ui);
                 });
-
+            ui.add_space(15.0);
             TextEdit::singleline(&mut self.url)
-                .desired_width(ui.available_width() - 100.0)
+                .desired_width(ui.available_width() - 150.0)
                 .show(ui);
 
             // Button::new("SEND");
-
+            ui.add_space(15.0);
             match &self.state {
                 None => {
                     // TODO width of button https://github.com/emilk/egui/blob/master/egui_demo_lib/src/demo/tests.rs
@@ -478,6 +481,14 @@ impl Http {
     }
 
     fn method_select(&mut self, ui: &mut Ui) {
+        // ui.spacing_mut().combo_height = 20.0 + 16.0;
+        // ui.style_mut().spacing.window_margin = Margin {
+        //     left: 5.0,
+        //     right: 5.0,
+        //     top: 5.0,
+        //     bottom: 5.0,
+        // };
+        // ui.style_mut().visuals.widgets = crate::style::get_widgets();
         // TODO Better impl
         if ui
             .selectable_value(&mut self.method, Method::Get, "Get")

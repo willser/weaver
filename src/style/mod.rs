@@ -43,7 +43,7 @@ pub fn get_widgets() -> Widgets {
             expansion: 5.0,
         },
         inactive: WidgetVisuals {
-            bg_fill: color::BLACK,
+            bg_fill: color::WHITE,
             bg_stroke: Stroke {
                 width: 1.0,
                 color: color::GRAY,
@@ -56,7 +56,7 @@ pub fn get_widgets() -> Widgets {
             expansion: 5.0,
         },
         hovered: WidgetVisuals {
-            bg_fill: color::BLACK,
+            bg_fill: color::WHITE,
             bg_stroke: Stroke {
                 width: 1.0,
                 color: color::LIGHT_SKY_BLUE,
@@ -64,15 +64,15 @@ pub fn get_widgets() -> Widgets {
             rounding: Rounding::none(),
             fg_stroke: Stroke {
                 width: 1.0,
-                color: color::LIGHT_SKY_BLUE,
+                color: color::BLACK,
             },
             expansion: 5.0,
         },
         active: WidgetVisuals {
-            bg_fill: color::BLACK,
+            bg_fill: color::WHITE,
             bg_stroke: Stroke {
                 width: 1.0,
-                color: color::BLACK,
+                color: color::WHITE,
             },
             rounding: Rounding::none(),
             fg_stroke: Stroke {
@@ -82,10 +82,10 @@ pub fn get_widgets() -> Widgets {
             expansion: 5.0,
         },
         open: WidgetVisuals {
-            bg_fill: color::BLACK,
+            bg_fill: color::WHITE,
             bg_stroke: Stroke {
                 width: 1.0,
-                color: color::BLACK,
+                color: color::LIGHT_SKY_BLUE,
             },
             rounding: Rounding::none(),
             fg_stroke: Stroke {
