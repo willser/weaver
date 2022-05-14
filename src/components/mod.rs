@@ -1,4 +1,7 @@
 mod frame;
+mod inline;
+
+pub use inline::select::Select;
 
 pub use frame::Frame;
 
