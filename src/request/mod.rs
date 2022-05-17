@@ -86,6 +86,7 @@ pub(crate) trait Request {
                             .frame(true);
 
                     ui.style_mut().visuals.widgets.inactive.bg_fill = get_bg_color(is_active);
+                    ui.style_mut().visuals.widgets.hovered.bg_fill = get_bg_color(is_active);
                     if ui.add(button).clicked() {
                         Some(ClickType::Delete)
                     } else {

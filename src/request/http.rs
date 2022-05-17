@@ -2,7 +2,6 @@ use crate::request::Request;
 use crate::{color, components};
 
 use crate::egui::{FontSelection, Vec2};
-use eframe::egui::style::Margin;
 use eframe::egui::{
     Align, Button, CollapsingHeader, ComboBox, Layout, Pos2, Rect, Rounding, ScrollArea, Stroke,
     TextEdit, Ui, WidgetText,
@@ -262,16 +261,16 @@ impl Request for Http {
                                     .inner
                                     .clicked()
                                 });
-                                ui.add_space(5.0);
-                                ui.horizontal(|ui| {
-                                    ui.vertical_centered(|ui| {
-                                        if ui.button("Add").clicked() {
-                                            self.header.push(("".to_string(), "".to_string()));
-                                        }
-                                    })
-                                });
                             });
                         }
+                        ui.add_space(5.0);
+                        ui.horizontal(|ui| {
+                            ui.vertical_centered(|ui| {
+                                if ui.button("Add").clicked() {
+                                    self.header.push(("".to_string(), "".to_string()));
+                                }
+                            })
+                        });
                     }
                     false => {
                         self.param_view(ui);
