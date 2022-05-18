@@ -27,7 +27,7 @@ fn load_image_from_memory(image_data: &[u8]) -> Result<ColorImage, image::ImageE
 
 pub const DEL_BTN_SIZE: f32 = 12.0;
 
-pub fn get_widgets() -> Widgets {
+pub fn get_widgets(expansion: f32) -> Widgets {
     Widgets {
         noninteractive: WidgetVisuals {
             bg_fill: color::BLACK,
@@ -40,7 +40,7 @@ pub fn get_widgets() -> Widgets {
                 width: 1.0,
                 color: color::BLACK,
             },
-            expansion: 5.0,
+            expansion,
         },
         inactive: WidgetVisuals {
             bg_fill: color::WHITE,
@@ -53,7 +53,7 @@ pub fn get_widgets() -> Widgets {
                 width: 1.0,
                 color: color::BLACK,
             },
-            expansion: 5.0,
+            expansion,
         },
         hovered: WidgetVisuals {
             bg_fill: color::WHITE,
@@ -66,7 +66,7 @@ pub fn get_widgets() -> Widgets {
                 width: 1.0,
                 color: color::BLACK,
             },
-            expansion: 5.0,
+            expansion,
         },
         active: WidgetVisuals {
             bg_fill: color::WHITE,
@@ -79,7 +79,7 @@ pub fn get_widgets() -> Widgets {
                 width: 1.0,
                 color: color::BLACK,
             },
-            expansion: 5.0,
+            expansion,
         },
         open: WidgetVisuals {
             bg_fill: color::WHITE,
@@ -92,7 +92,7 @@ pub fn get_widgets() -> Widgets {
                 width: 1.0,
                 color: color::BLACK,
             },
-            expansion: 5.0,
+            expansion,
         },
     }
 }

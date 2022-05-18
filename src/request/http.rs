@@ -2,9 +2,10 @@ use crate::request::Request;
 use crate::{color, components};
 
 use crate::egui::{FontSelection, Vec2};
+use eframe::egui::text::LayoutJob;
 use eframe::egui::{
-    Align, Button, CollapsingHeader, ComboBox, Layout, Pos2, Rect, Rounding, ScrollArea, Stroke,
-    TextEdit, Ui, WidgetText,
+    Align, Button, CollapsingHeader, ComboBox, FontId, Layout, Pos2, Rect, Rounding, ScrollArea,
+    Stroke, TextEdit, TextStyle, Ui, WidgetText,
 };
 use poll_promise::Promise;
 use rand::{distributions::Alphanumeric, Rng};
@@ -126,13 +127,13 @@ impl Request for Http {
         ui.with_layout(Layout::left_to_right().with_cross_align(Align::Min), |ui| {
             let mut pos2 = ui.next_widget_position();
             // TODO This value may be be decided by egui style,explore later
-            pos2.y -= 6.0;
+            pos2.y -= 2.5;
 
             let rect = Rect {
                 min: pos2,
                 max: Pos2 {
                     x: pos2.x + 5.0,
-                    y: pos2.y + row_height + 16.0,
+                    y: pos2.y + row_height + 14.0,
                 },
             };
 
@@ -143,80 +144,42 @@ impl Request for Http {
                 Stroke::none(),
             );
             ui.add_space(15.0);
-            ui.style_mut().visuals.widgets = crate::style::get_widgets();
+            ui.style_mut().visuals.widgets = crate::style::get_widgets(1.0);
             TextEdit::singleline(&mut self.name)
+                .margin(Vec2::new(5.0, 5.0))
                 .desired_width(ui.available_width() - 10.0)
                 .show(ui);
         });
         ui.add_space(15.0);
         ui.with_layout(Layout::left_to_right().with_cross_align(Align::Min), |ui| {
-            ui.style_mut().visuals.widgets = crate::style::get_widgets();
-            ui.add_space(15.0);
-
+            ui.style_mut().visuals.widgets = crate::style::get_widgets(5.0);
+            ui.add_space(19.0);
+            let mut job = LayoutJob::simple(
+                format!("{:?}", &self.method),
+                id.clone(),
+                color::BLACK,
+                50.0,
+            );
+            job.first_row_min_height = row_height + 2.0;
             ComboBox::from_id_source("comboBox")
-                .selected_text(format!("{:?}", self.method))
+                .selected_text(WidgetText::LayoutJob(job))
                 .show_ui(ui, |ui| {
                     self.method_select(ui);
                 });
-            ui.add_space(15.0);
+            ui.add_space(10.0);
+            ui.style_mut().visuals.widgets = crate::style::get_widgets(5.0);
             TextEdit::singleline(&mut self.url)
-                .desired_width(ui.available_width() - 150.0)
+                .font(FontSelection::Style(TextStyle::Button))
+                .desired_width(ui.available_width() - 110.0)
                 .show(ui);
 
             // Button::new("SEND");
-            ui.add_space(15.0);
-            match &self.state {
-                None => {
-                    // TODO width of button https://github.com/emilk/egui/blob/master/egui_demo_lib/src/demo/tests.rs
+            ui.style_mut().visuals.widgets = crate::style::get_widgets(5.0);
+            ui.add_space(5.0);
 
-                    let send_button = components::widget_with_size(
-                        ui,
-                        Vec2::new(80.0, 18.0),
-                        Button::new(WidgetText::from("SEND").color(color::WHITE))
-                            .fill(color::DODER_BLUE),
-                    );
-
-                    if send_button.clicked() {
-                        match Url::parse(&self.url) {
-                            Ok(url) => {
-                                self.state = Some(get_request_promise(
-                                    self.method.clone(),
-                                    self.param_type,
-                                    url,
-                                    self.header.clone(),
-                                    self.text_param.clone(),
-                                    self.form_param.clone(),
-                                ));
-                            }
-                            Err(err) => {
-                                self.state = Some(Promise::from_ready(Err(err.to_string())))
-                            }
-                        };
-                    };
-                }
-                Some(promise) => {
-                    // Cancel the request
-
-                    match promise.ready() {
-                        None => {
-                            if components::widget_with_size(
-                                ui,
-                                Vec2::new(80.0, 18.0),
-                                Button::new(WidgetText::from("CANCEL").color(color::WHITE))
-                                    .fill(color::CRIMSON),
-                            )
-                            .clicked()
-                            {
-                                self.state = None;
-                            }
-                        }
-                        Some(result) => {
-                            self.result = Some(result.clone());
-                            self.state = None;
-                        }
-                    }
-                }
-            }
+            // ui.with_layout(Layout::left_to_right().with_cross_align(Align::Max), |ui| {
+            self.send_button(ui, id.clone(), row_height)
+            // });
         });
         if let Some(Result::Err(error_text)) = &self.result {
             ui.add_space(15.0);
@@ -523,6 +486,61 @@ impl Http {
             self.form_param = vec![];
             self.param_type = ParamType::FormData;
         };
+    }
+
+    fn send_button(&mut self, ui: &mut Ui, id: FontId, row_height: f32) {
+        match &self.state {
+            None => {
+                // TODO width of button https://github.com/emilk/egui/blob/master/egui_demo_lib/src/demo/tests.rs
+                let mut job = LayoutJob::simple("Send".to_string(), id, color::WHITE, 80.0);
+                job.first_row_min_height = row_height + 2.0;
+
+                let send_button = components::widget_with_size(
+                    ui,
+                    Vec2::new(80.0, row_height + 4.0),
+                    Button::new(WidgetText::from("Send").color(color::WHITE))
+                        .fill(color::DODER_BLUE),
+                );
+
+                if send_button.clicked() {
+                    match Url::parse(&self.url) {
+                        Ok(url) => {
+                            self.state = Some(get_request_promise(
+                                self.method.clone(),
+                                self.param_type,
+                                url,
+                                self.header.clone(),
+                                self.text_param.clone(),
+                                self.form_param.clone(),
+                            ));
+                        }
+                        Err(err) => self.state = Some(Promise::from_ready(Err(err.to_string()))),
+                    };
+                };
+            }
+            Some(promise) => {
+                // Cancel the request
+
+                match promise.ready() {
+                    None => {
+                        if components::widget_with_size(
+                            ui,
+                            Vec2::new(80.0, row_height + 4.0),
+                            Button::new(WidgetText::from("CANCEL").color(color::WHITE))
+                                .fill(color::CRIMSON),
+                        )
+                        .clicked()
+                        {
+                            self.state = None;
+                        }
+                    }
+                    Some(result) => {
+                        self.result = Some(result.clone());
+                        self.state = None;
+                    }
+                }
+            }
+        }
     }
 }
 
