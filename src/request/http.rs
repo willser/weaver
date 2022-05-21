@@ -4,8 +4,8 @@ use crate::{color, components};
 use crate::egui::{FontSelection, Vec2};
 use eframe::egui::text::LayoutJob;
 use eframe::egui::{
-    Align, Button, CollapsingHeader, ComboBox, FontId, Layout, Pos2, Rect, Rounding, ScrollArea,
-    Stroke, TextEdit, TextStyle, Ui, WidgetText,
+    Align, Button, CollapsingHeader, ComboBox, FontId, Layout, Pos2, Rect, Rounding, Stroke,
+    TextEdit, TextStyle, Ui, WidgetText,
 };
 use poll_promise::Promise;
 use rand::{distributions::Alphanumeric, Rng};
@@ -183,15 +183,26 @@ impl Request for Http {
         });
         if let Some(Result::Err(error_text)) = &self.result {
             ui.add_space(15.0);
-            ScrollArea::vertical().show(ui, |ui| {
-                let mut error_text = error_text.as_str();
-                ui.add(
-                    eframe::egui::TextEdit::multiline(&mut error_text) // for cursor height
-                        .text_color(color::CRIMSON)
-                        .desired_rows(1)
-                        .desired_width(f32::INFINITY),
-                );
-            });
+            let del_button_res = ui
+                .vertical_centered(|ui| {
+                    let mut error_text = error_text.as_str();
+
+                    ui.horizontal(|ui| {
+                        ui.add_space(15.0);
+                        let del_button_res = ui.button("Del");
+                        eframe::egui::TextEdit::multiline(&mut error_text) // for cursor height
+                            .text_color(color::CRIMSON)
+                            .desired_width(ui.available_width() - 25.0)
+                            .desired_rows(1)
+                            .show(ui);
+                        del_button_res
+                    })
+                    .inner
+                })
+                .inner;
+            if del_button_res.clicked() {
+                self.result = None
+            }
         }
         ui.add_space(15.0);
         CollapsingHeader::new("Request")
