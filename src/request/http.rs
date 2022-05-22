@@ -2,9 +2,10 @@ use crate::request::Request;
 use crate::{color, components};
 
 use crate::egui::{FontSelection, Vec2};
+use eframe::egui;
 use eframe::egui::text::LayoutJob;
 use eframe::egui::{
-    Align, Button, CollapsingHeader, ComboBox, FontId, Layout, Pos2, Rect, Rounding, Stroke,
+    Align, Button, CollapsingHeader, ComboBox, FontId, Id, Layout, Pos2, Rect, Rounding, Stroke,
     TextEdit, TextStyle, Ui, WidgetText,
 };
 use poll_promise::Promise;
@@ -13,6 +14,7 @@ use reqwest::blocking::multipart;
 use reqwest::{StatusCode, Url};
 use serde::{Deserialize, Serialize};
 use std::ffi::OsStr;
+use std::ops::Add;
 use std::path::PathBuf;
 
 type RequestResult = Result<Response, String>;
@@ -183,24 +185,37 @@ impl Request for Http {
         });
         if let Some(Result::Err(error_text)) = &self.result {
             ui.add_space(15.0);
-            let del_button_res = ui
+            let clear_btn_res = ui
                 .vertical_centered(|ui| {
                     let mut error_text = error_text.as_str();
 
                     ui.horizontal(|ui| {
                         ui.add_space(15.0);
-                        let del_button_res = ui.button("Del");
+
+                        let next_pos = ui.next_widget_position();
+                        let clear_btn_rect = Rect::from_min_max(
+                            next_pos,
+                            next_pos.add(Vec2::splat(row_height / 1.5)),
+                        );
+                        ui.add_space(row_height);
+                        let clear_btn_res =
+                            components::close_button(ui, clear_btn_rect, Id::new("clear_btn_rect"));
+
                         eframe::egui::TextEdit::multiline(&mut error_text) // for cursor height
                             .text_color(color::CRIMSON)
                             .desired_width(ui.available_width() - 25.0)
                             .desired_rows(1)
                             .show(ui);
-                        del_button_res
+                        clear_btn_res
                     })
                     .inner
                 })
                 .inner;
-            if del_button_res.clicked() {
+
+            if clear_btn_res.hovered() {
+                egui::show_tooltip_text(ui.ctx(), Id::new("clear_btn_tooltip"), "Clear the error");
+            }
+            if clear_btn_res.clicked() {
                 self.result = None
             }
         }
