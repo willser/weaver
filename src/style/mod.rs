@@ -1,6 +1,8 @@
 use crate::color;
 use eframe::egui::style::{WidgetVisuals, Widgets};
-use eframe::egui::{ColorImage, Context, Rounding, Stroke, TextureHandle};
+use eframe::egui::{
+    ColorImage, Context, FontId, FontSelection, Rounding, Stroke, TextureHandle, Ui,
+};
 
 pub struct WeaverStyle {
     pub del_btn: TextureHandle,
@@ -95,4 +97,10 @@ pub fn get_widgets(expansion: f32) -> Widgets {
             expansion,
         },
     }
+}
+
+pub fn get_row_height(ui: &mut Ui) -> (FontId, f32) {
+    let id = FontSelection::default().resolve(ui.style());
+    let row_height = ui.fonts().row_height(&id);
+    (id, row_height)
 }

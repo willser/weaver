@@ -123,8 +123,7 @@ impl Request for Http {
     }
 
     fn view(&mut self, ui: &mut Ui) {
-        let id = FontSelection::default().resolve(ui.style());
-        let row_height = ui.fonts().row_height(&id);
+        let (id, row_height) = crate::style::get_row_height(ui);
         ui.add_space(10.0);
         ui.with_layout(Layout::left_to_right().with_cross_align(Align::Min), |ui| {
             let mut pos2 = ui.next_widget_position();
@@ -224,6 +223,7 @@ impl Request for Http {
             .default_open(true)
             .show(ui, |ui| {
                 ui.add_space(5.0);
+                ui.style_mut().visuals.widgets = crate::style::get_widgets(1.0);
                 ui.horizontal(|ui| {
                     ui.selectable_value(&mut self.show_header, true, "HEADER");
                     ui.selectable_value(&mut self.show_header, false, "PARAM");
@@ -346,7 +346,11 @@ impl Http {
                         ParamType::Query => {
                             self.query_param_view(ui);
                         }
-                        _ => {}
+                        _ => {
+                            ui.set_width(ui.available_width());
+                            // Make panel has max width
+                            // ui.horizontal(|ui| ui.vertical_centered(|ui| ui.add_space(1.0)));
+                        }
                     }
                 });
             })
@@ -354,8 +358,10 @@ impl Http {
     }
 
     fn form_data_param_view(&mut self, ui: &mut Ui) {
+        ui.set_width(ui.available_width());
+        let (_, row_height) = crate::style::get_row_height(ui);
         let mut label = 0;
-        let col_width = (ui.available_width() - 180.0) / 2.0;
+        let col_width = (ui.available_width() - 80.0 - row_height * 3.0) / 2.0;
         self.form_param
             .retain_mut(|(key, value, path_buf, form_param_type)| {
                 ui.horizontal(|ui| {
@@ -405,12 +411,18 @@ impl Http {
                             }
                         }
 
-                        components::widget_with_size(
-                            ui,
-                            Vec2::new(70.0, 18.0),
-                            Button::new(WidgetText::from("DEL").color(color::WHITE))
-                                .fill(color::CRIMSON),
-                        )
+                        let mut next_pos = ui.next_widget_position();
+                        next_pos = Pos2 {
+                            x: next_pos.x + row_height / 2.0,
+                            y: next_pos.y - row_height / 2.0,
+                        };
+                        ui.style_mut().visuals.widgets.hovered.expansion = 2.0;
+                        let clear_btn_rect = Rect::from_min_max(
+                            next_pos,
+                            next_pos.add(Vec2::splat(row_height / 1.5)),
+                        );
+                        ui.add_space(row_height);
+                        components::close_button(ui, clear_btn_rect, Id::new("remove_param_btn"))
                     })
                     .inner
                     .clicked()
@@ -420,14 +432,20 @@ impl Http {
         ui.add_space(5.0);
         ui.horizontal(|ui| {
             ui.vertical_centered(|ui| {
-                if ui.button("Add").clicked() {
+                ui.style_mut().visuals.widgets.hovered.expansion = 2.0;
+                let next_pos = ui.next_widget_position();
+                let clear_btn_rect =
+                    Rect::from_min_max(next_pos, next_pos.add(Vec2::splat(row_height / 1.5)));
+                if components::add_button(ui, clear_btn_rect, Id::new("add_form_data_param_button"))
+                    .clicked()
+                {
                     self.form_param.push((
                         "".to_string(),
                         "".to_string(),
                         None,
                         FormParamType::Text,
                     ));
-                }
+                };
             })
         });
     }

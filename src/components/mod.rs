@@ -26,3 +26,17 @@ pub fn close_button(ui: &mut Ui, rect: Rect, id: Id) -> Response {
         .line_segment([rect.right_top(), rect.left_bottom()], stroke);
     response
 }
+
+pub fn add_button(ui: &mut Ui, rect: Rect, id: Id) -> Response {
+    let response = ui.interact(rect, id, Sense::click());
+    ui.expand_to_include_rect(response.rect);
+
+    let visuals = ui.style().interact(&response);
+    let rect = rect.shrink(2.0).expand(visuals.expansion);
+    let stroke = visuals.fg_stroke;
+    ui.painter() // paints \
+        .line_segment([rect.left_center(), rect.right_center()], stroke);
+    ui.painter() // paints /
+        .line_segment([rect.center_top(), rect.center_bottom()], stroke);
+    response
+}
