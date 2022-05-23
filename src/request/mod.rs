@@ -1,13 +1,14 @@
 use crate::components::Frame;
 use crate::egui::Color32;
 use crate::style::DEL_BTN_SIZE;
-use crate::{color, WeaverStyle};
+use crate::{color, components, WeaverStyle};
 use eframe::egui;
 use eframe::egui::epaint::text::TextWrapping;
 use eframe::egui::style::Margin;
 use eframe::egui::style::TextStyle::Body;
 use eframe::egui::text::LayoutJob;
 use eframe::egui::{Id, ImageButton, Label, Layout, Pos2, Rect, Rounding, Sense, Stroke, Ui, Vec2};
+use std::ops::Add;
 
 ///TODO  Remove pub in future.
 pub mod http;
@@ -17,6 +18,8 @@ pub(crate) trait Request {
     fn request_name(&self) -> &str;
 
     fn view(&mut self, ui: &mut Ui);
+
+    fn get_id(&self) -> String;
 
     // TODO until ws,graphQL or rpc be supported
     // fn request_type(&self) -> String;
@@ -81,13 +84,27 @@ pub(crate) trait Request {
                     ..Frame::default()
                 }
                 .show(ui, |ui| {
-                    let button =
-                        ImageButton::new(weaver_style.del_btn.id(), Vec2::splat(DEL_BTN_SIZE))
-                            .frame(true);
+                    let button = ImageButton::new(&weaver_style.del_btn, Vec2::splat(DEL_BTN_SIZE))
+                        .frame(true);
+                    let btn_response = ui.add_visible(false, button);
+                    let mut btn_min_rect = btn_response.rect.min;
+                    btn_min_rect = Pos2 {
+                        x: btn_min_rect.x + 5.0,
+                        y: btn_min_rect.y + 5.0,
+                    };
+                    ui.style_mut().visuals.widgets.hovered.expansion = 2.0;
+                    let clear_btn_rect = Rect::from_min_max(
+                        btn_min_rect,
+                        btn_min_rect.add(Vec2::splat(DEL_BTN_SIZE)),
+                    );
+                    // ui.add_space(DEL_BTN_SIZE);
+                    let del_button = components::close_button(
+                        ui,
+                        clear_btn_rect,
+                        Id::new(self.get_id() + "_remove_param_btn"),
+                    );
 
-                    ui.style_mut().visuals.widgets.inactive.bg_fill = get_bg_color(is_active);
-                    ui.style_mut().visuals.widgets.hovered.bg_fill = get_bg_color(is_active);
-                    if ui.add(button).clicked() {
+                    if del_button.clicked() {
                         Some(ClickType::Delete)
                     } else {
                         None
