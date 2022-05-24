@@ -10,7 +10,7 @@ mod style;
 use crate::request::{ClickType, Request};
 use crate::setting::Settings;
 use crate::style::WeaverStyle;
-use eframe::egui::{CentralPanel, ScrollArea};
+use eframe::egui::{CentralPanel, ScrollArea, Style, Visuals};
 use eframe::{egui, App, Frame, Storage};
 use request::http::Http;
 use serde::{Deserialize, Serialize};
@@ -154,8 +154,29 @@ fn main() {
                 None => Default::default(),
                 Some(storage) => eframe::get_value(storage, eframe::APP_KEY).unwrap_or_default(),
             };
-            weaver.settings.local_settings(&creation_context.egui_ctx);
-            weaver.style = Some(WeaverStyle::create(&creation_context.egui_ctx));
+            let context = &creation_context.egui_ctx;
+            let mut visuals = Visuals::light();
+            visuals.widgets.open.rounding = Default::default();
+            visuals.widgets.hovered.rounding = Default::default();
+            visuals.widgets.active.rounding = Default::default();
+            visuals.widgets.noninteractive.rounding = Default::default();
+            visuals.widgets.inactive.rounding = Default::default();
+            visuals.window_rounding = Default::default();
+            visuals.window_shadow = Default::default();
+            context.set_style(Style {
+                override_text_style: None,
+                override_font_id: None,
+                text_styles: Default::default(),
+                wrap: None,
+                spacing: Default::default(),
+                interaction: Default::default(),
+                visuals,
+                animation_time: 0.0,
+                debug: Default::default(),
+                explanation_tooltips: false,
+            });
+            weaver.settings.local_settings(context);
+            weaver.style = Some(WeaverStyle::create(context));
             Box::new(weaver)
         }),
     );

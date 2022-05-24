@@ -363,75 +363,81 @@ impl Http {
 
     fn form_data_param_view(&mut self, ui: &mut Ui) {
         ui.set_width(ui.available_width());
-        let (_, row_height) = crate::style::get_row_height(ui);
+        let (font_id, row_height) = crate::style::get_row_height(ui);
         let mut label = 0;
-        let col_width = (ui.available_width() - 80.0 - row_height * 3.0) / 2.0;
+        let col_width = (ui.available_width() - 120.0 - row_height * 3.0) / 2.0;
         self.form_param
             .retain_mut(|(key, value, path_buf, form_param_type)| {
-                ui.horizontal(|ui| {
-                    !ui.horizontal(|ui| {
-                        ui.add(TextEdit::singleline(key).desired_width(col_width));
+                ui.add_space(2.0);
+                !ui.with_layout(Layout::left_to_right().with_cross_align(Align::Min), |ui| {
+                    ui.add(TextEdit::singleline(key).desired_width(col_width));
 
-                        label += 1;
-                        // TODO center
-                        ComboBox::from_id_source(label.to_string() + "form_param_type_combo_box")
-                            .selected_text(format!("{:?}", form_param_type))
-                            .width(70.0)
-                            .show_ui(ui, |ui| {
-                                ui.selectable_value(form_param_type, FormParamType::Text, "Text");
-                                ui.selectable_value(form_param_type, FormParamType::File, "File");
-                            });
+                    label += 1;
+                    // TODO center
+                    let mut job = LayoutJob::simple(
+                        format!("{:?}", form_param_type),
+                        font_id.clone(),
+                        color::BLACK,
+                        70.0,
+                    );
+                    job.first_row_min_height = row_height + 2.0;
+                    ComboBox::from_id_source(label.to_string() + "form_param_type_combo_box")
+                        .selected_text(WidgetText::LayoutJob(job))
+                        .show_ui(ui, |ui| {
+                            ui.selectable_value(form_param_type, FormParamType::Text, "Text");
+                            ui.selectable_value(form_param_type, FormParamType::File, "File");
+                        });
 
-                        match form_param_type {
-                            FormParamType::File => {
-                                let file_button = components::widget_with_size(
-                                    ui,
-                                    Vec2::new(col_width, 18.0),
-                                    Button::new(match path_buf {
-                                        Some(name) => name
-                                            .file_name()
-                                            .unwrap_or_else(|| OsStr::new("Open file…"))
-                                            .to_str()
-                                            .unwrap_or("Open file…"),
-                                        _ => "Open file…",
-                                    }),
-                                );
-                                if file_button.clicked() {
-                                    if let Some(path) = rfd::FileDialog::new().pick_file() {
-                                        *path_buf = Some(path);
-                                    }
-                                }
-
-                                if file_button.secondary_clicked() {
-                                    *path_buf = None;
+                    match form_param_type {
+                        FormParamType::File => {
+                            let file_button = components::widget_with_size(
+                                ui,
+                                Vec2::new(col_width, row_height + 4.0),
+                                Button::new(match path_buf {
+                                    Some(name) => name
+                                        .file_name()
+                                        .unwrap_or_else(|| OsStr::new("Open file…"))
+                                        .to_str()
+                                        .unwrap_or("Open file…"),
+                                    _ => "Open file…",
+                                }),
+                            );
+                            if file_button.clicked() {
+                                if let Some(path) = rfd::FileDialog::new().pick_file() {
+                                    *path_buf = Some(path);
                                 }
                             }
-                            FormParamType::Text => {
-                                components::widget_with_size(
-                                    ui,
-                                    Vec2::new(col_width, 18.0),
-                                    TextEdit::singleline(value),
-                                );
+
+                            if file_button.secondary_clicked() {
+                                *path_buf = None;
                             }
                         }
+                        FormParamType::Text => {
+                            components::widget_with_size(
+                                ui,
+                                Vec2::new(col_width, row_height),
+                                TextEdit::singleline(value),
+                            );
+                        }
+                    }
 
-                        let mut next_pos = ui.next_widget_position();
-                        next_pos = Pos2 {
-                            x: next_pos.x + row_height / 2.0,
-                            y: next_pos.y - row_height / 2.0,
-                        };
-                        ui.style_mut().visuals.widgets.hovered.expansion = 2.0;
-                        let clear_btn_rect = Rect::from_min_max(
-                            next_pos,
-                            next_pos.add(Vec2::splat(row_height / 1.5)),
-                        );
-                        ui.add_space(row_height);
-                        components::close_button(ui, clear_btn_rect, Id::new("remove_param_btn"))
-                    })
-                    .inner
-                    .clicked()
+                    let mut next_pos = ui.next_widget_position();
+                    next_pos = Pos2 {
+                        x: next_pos.x,
+                        y: next_pos.y + 2.0 + (row_height - row_height / 1.5) / 2.0,
+                    };
+                    ui.style_mut().visuals.widgets.hovered.expansion = 2.0;
+                    let clear_btn_rect =
+                        Rect::from_min_max(next_pos, next_pos.add(Vec2::splat(row_height / 1.5)));
+                    ui.add_space(row_height);
+                    components::close_button(
+                        ui,
+                        clear_btn_rect,
+                        Id::new(label.to_string() + "remove_param_btn"),
+                    )
                 })
                 .inner
+                .clicked()
             });
         ui.add_space(5.0);
         ui.horizontal(|ui| {
