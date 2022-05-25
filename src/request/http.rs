@@ -1,12 +1,13 @@
 use crate::request::Request;
-use crate::{color, components};
+use crate::{color, components, style, Visuals};
 
 use crate::egui::{FontSelection, Vec2};
+use crate::style::get_row_height;
 use eframe::egui;
 use eframe::egui::text::LayoutJob;
 use eframe::egui::{
-    Align, Button, CollapsingHeader, ComboBox, FontId, Id, Layout, Pos2, Rect, Rounding, Stroke,
-    TextEdit, TextStyle, Ui, WidgetText,
+    Align, Button, CollapsingHeader, ComboBox, FontId, Id, Layout, Pos2, Rect, Rounding,
+    ScrollArea, Stroke, TextEdit, TextStyle, Ui, WidgetText,
 };
 use poll_promise::Promise;
 use rand::{distributions::Alphanumeric, Rng};
@@ -231,34 +232,65 @@ impl Request for Http {
                 ui.add_space(5.0);
                 match self.show_header {
                     true => {
-                        if !self.header.is_empty() {
-                            ui.group(|ui| {
-                                let col_width = (ui.available_width() - 70.0) / 2.0;
-                                self.header.retain_mut(|(key, value)| {
-                                    !ui.horizontal(|ui| {
-                                        ui.add(TextEdit::singleline(key).desired_width(col_width));
-                                        ui.add(
-                                            TextEdit::singleline(value).desired_width(col_width),
-                                        );
-                                        ui.add(
-                                            Button::new(
-                                                WidgetText::from("DEL").color(color::WHITE),
+                        ui.group(|ui| {
+                            ui.set_width(ui.available_width());
+                            ui.style_mut().visuals.widgets = Visuals::light().widgets;
+                            ScrollArea::vertical()
+                                .max_height(ui.available_height() / 2.0)
+                                .show(ui, |ui| {
+                                    ui.style_mut().visuals.widgets = crate::style::get_widgets(1.0);
+                                    if !self.header.is_empty() {
+                                        let col_width = (ui.available_width() - 70.0) / 2.0;
+                                        let mut label = 0;
+                                        self.header.retain_mut(|(key, value)| {
+                                            label += 1;
+                                            !ui.horizontal(|ui| {
+                                                ui.add(
+                                                    TextEdit::singleline(key)
+                                                        .desired_width(col_width),
+                                                );
+                                                ui.add(
+                                                    TextEdit::singleline(value)
+                                                        .desired_width(col_width),
+                                                );
+
+                                                let clear_btn_rect =
+                                                    Self::get_next_del_btn(row_height, ui);
+                                                ui.add_space(row_height);
+                                                components::close_button(
+                                                    ui,
+                                                    clear_btn_rect,
+                                                    Id::new(
+                                                        label.to_string()
+                                                            + "remove_query_param_btn",
+                                                    ),
+                                                )
+                                            })
+                                            .inner
+                                            .clicked()
+                                        });
+                                    }
+                                    ui.add_space(5.0);
+                                    ui.horizontal(|ui| {
+                                        ui.vertical_centered(|ui| {
+                                            ui.style_mut().visuals.widgets.hovered.expansion = 2.0;
+                                            let next_pos = ui.next_widget_position();
+                                            let clear_btn_rect = Rect::from_min_max(
+                                                next_pos,
+                                                next_pos.add(Vec2::splat(row_height / 1.5)),
+                                            );
+                                            if components::add_button(
+                                                ui,
+                                                clear_btn_rect,
+                                                Id::new("add_header_button"),
                                             )
-                                            .fill(color::CRIMSON),
-                                        )
-                                    })
-                                    .inner
-                                    .clicked()
+                                            .clicked()
+                                            {
+                                                self.header.push(("".to_string(), "".to_string()));
+                                            };
+                                        })
+                                    });
                                 });
-                            });
-                        }
-                        ui.add_space(5.0);
-                        ui.horizontal(|ui| {
-                            ui.vertical_centered(|ui| {
-                                if ui.button("Add").clicked() {
-                                    self.header.push(("".to_string(), "".to_string()));
-                                }
-                            })
                         });
                     }
                     false => {
@@ -286,16 +318,19 @@ impl Request for Http {
                         }
                     ));
 
-                    ui.horizontal(|ui| {
-                        ui.group(|ui| {
-                            ui.vertical_centered_justified(|ui| {
-                                ui.add_enabled_ui(true, |ui| {
-                                    let mut response_body = response.body.as_str();
-                                    ui.text_edit_multiline(&mut response_body)
-                                });
+                    ScrollArea::vertical()
+                        .max_height(ui.available_height())
+                        .show(ui, |ui| {
+                            ui.group(|ui| {
+                                ui.set_width(ui.available_width());
+                                ui.vertical_centered_justified(|ui| {
+                                    ui.add_enabled_ui(true, |ui| {
+                                        let mut response_body = response.body.as_str();
+                                        ui.text_edit_multiline(&mut response_body)
+                                    });
+                                })
                             })
-                        })
-                    });
+                        });
                 }
             });
     }
@@ -307,7 +342,7 @@ impl Request for Http {
 
 impl Http {
     fn param_type_view(&mut self, ui: &mut Ui) {
-        match self.method {
+        ui.horizontal(|ui| match self.method {
             Method::Get => {
                 ui.vertical_centered(|ui| {
                     ui.with_layout(Layout::left_to_right(), |ui| {
@@ -326,38 +361,42 @@ impl Http {
                     })
                 });
             }
-        }
+        });
     }
 
     fn param_view(&mut self, ui: &mut Ui) {
-        ui.horizontal(|ui| {
-            ui.group(|ui| {
-                ui.vertical_centered(|ui| {
-                    ui.add_space(5.0);
-                    self.param_type_view(ui);
-                    ui.add_space(5.0);
-
-                    match self.param_type {
-                        ParamType::FormData => {
-                            self.form_data_param_view(ui);
+        ui.group(|ui| {
+            ui.set_width(ui.available_width());
+            ui.vertical_centered(|ui| {
+                ui.add_space(5.0);
+                self.param_type_view(ui);
+                ui.add_space(5.0);
+                ui.style_mut().visuals.widgets = Visuals::light().widgets;
+                ScrollArea::vertical()
+                    .max_height(ui.available_height() / 2.0 - get_row_height(ui).1)
+                    .show(ui, |ui| {
+                        ui.style_mut().visuals.widgets = crate::style::get_widgets(1.0);
+                        match self.param_type {
+                            ParamType::FormData => {
+                                self.form_data_param_view(ui);
+                            }
+                            ParamType::Json => {
+                                self.raw_param_view(ui);
+                            }
+                            ParamType::Other => {
+                                self.raw_param_view(ui);
+                            }
+                            ParamType::Query => {
+                                self.query_param_view(ui);
+                            }
+                            _ => {
+                                ui.set_width(ui.available_width());
+                                // Make panel has max width
+                                // ui.horizontal(|ui| ui.vertical_centered(|ui| ui.add_space(1.0)));
+                            }
                         }
-                        ParamType::Json => {
-                            self.raw_param_view(ui);
-                        }
-                        ParamType::Other => {
-                            self.raw_param_view(ui);
-                        }
-                        ParamType::Query => {
-                            self.query_param_view(ui);
-                        }
-                        _ => {
-                            ui.set_width(ui.available_width());
-                            // Make panel has max width
-                            // ui.horizontal(|ui| ui.vertical_centered(|ui| ui.add_space(1.0)));
-                        }
-                    }
-                });
-            })
+                    });
+            });
         });
     }
 
@@ -460,6 +499,18 @@ impl Http {
         });
     }
 
+    fn get_next_del_btn(row_height: f32, ui: &mut Ui) -> Rect {
+        let mut next_pos = ui.next_widget_position();
+        next_pos = Pos2 {
+            x: next_pos.x,
+            y: next_pos.y - row_height / 3.0,
+        };
+        ui.style_mut().visuals.widgets.hovered.expansion = 2.0;
+        let clear_btn_rect =
+            Rect::from_min_max(next_pos, next_pos.add(Vec2::splat(row_height / 1.5)));
+        clear_btn_rect
+    }
+
     fn raw_param_view(&mut self, ui: &mut Ui) {
         ui.horizontal(|ui| {
             ui.vertical_centered_justified(|ui| {
@@ -470,28 +521,49 @@ impl Http {
 
     fn query_param_view(&mut self, ui: &mut Ui) {
         let col_width = (ui.available_width() - 70.0) / 2.0;
+
+        let (_, row_height) = style::get_row_height(ui);
+
+        let mut label = 1;
         self.form_param.retain_mut(|(key, value, ..)| {
+            label += 1;
+            ui.add_space(2.0);
             !ui.horizontal(|ui| {
                 ui.add(TextEdit::singleline(key).desired_width(col_width));
                 ui.add(TextEdit::singleline(value).desired_width(col_width));
-                ui.add(
-                    Button::new(WidgetText::from("DEL").color(color::WHITE)).fill(color::CRIMSON),
+                let clear_btn_rect = Self::get_next_del_btn(row_height, ui);
+                ui.add_space(row_height);
+                components::close_button(
+                    ui,
+                    clear_btn_rect,
+                    Id::new(label.to_string() + "remove_query_param_btn"),
                 )
             })
             .inner
             .clicked()
         });
         ui.add_space(5.0);
+
         ui.horizontal(|ui| {
             ui.vertical_centered(|ui| {
-                if ui.button("Add").clicked() {
+                ui.style_mut().visuals.widgets.hovered.expansion = 2.0;
+                let next_pos = ui.next_widget_position();
+                let clear_btn_rect =
+                    Rect::from_min_max(next_pos, next_pos.add(Vec2::splat(row_height / 1.5)));
+                if components::add_button(
+                    ui,
+                    clear_btn_rect,
+                    Id::new("add_query_data_param_button"),
+                )
+                .clicked()
+                {
                     self.form_param.push((
                         "".to_string(),
                         "".to_string(),
                         None,
                         FormParamType::Text,
                     ));
-                }
+                };
             })
         });
     }

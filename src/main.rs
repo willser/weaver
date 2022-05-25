@@ -118,30 +118,10 @@ impl App for Weaver {
         });
     }
 
-    /// Called once before the first frame.
-    // fn setup(
-    //     &mut self,
-    //     ctx: &egui::Context,
-    //     _frame: &epi::Frame,
-    //     storage: Option<&dyn epi::Storage>,
-    // ) {
-    //     // Load previous app state (if any).
-    //     if let Some(storage) = storage {
-    //         // TODO change key in feature
-    //         *self = epi::get_value(storage, epi::APP_KEY).unwrap_or_default();
-    //     }
-    //     // Init font after load data from local
-    //     self.settings.local_settings(ctx);
-    // }
-
     fn save(&mut self, storage: &mut dyn Storage) {
         // TODO change key in feature
         eframe::set_value(storage, eframe::APP_KEY, self);
     }
-
-    // fn name(&self) -> &str {
-    //     "weaver"
-    // }
 }
 
 fn main() {
