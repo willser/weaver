@@ -232,66 +232,79 @@ impl Request for Http {
                 ui.add_space(5.0);
                 match self.show_header {
                     true => {
-                        ui.group(|ui| {
-                            ui.set_width(ui.available_width());
-                            ui.style_mut().visuals.widgets = Visuals::light().widgets;
-                            ScrollArea::vertical()
-                                .max_height(ui.available_height() / 2.0)
-                                .show(ui, |ui| {
-                                    ui.style_mut().visuals.widgets = crate::style::get_widgets(1.0);
-                                    if !self.header.is_empty() {
-                                        let col_width = (ui.available_width() - 70.0) / 2.0;
-                                        let mut label = 0;
-                                        self.header.retain_mut(|(key, value)| {
-                                            label += 1;
-                                            !ui.horizontal(|ui| {
-                                                ui.add(
-                                                    TextEdit::singleline(key)
-                                                        .desired_width(col_width),
-                                                );
-                                                ui.add(
-                                                    TextEdit::singleline(value)
-                                                        .desired_width(col_width),
-                                                );
+                        let group_rect = ui
+                            .group(|ui| {
+                                ui.set_width(ui.available_width());
+                                ui.style_mut().visuals.widgets = Visuals::light().widgets;
+                                ScrollArea::vertical()
+                                    .max_height(ui.available_height() / 2.0)
+                                    .show(ui, |ui| {
+                                        ui.style_mut().visuals.widgets =
+                                            crate::style::get_widgets(1.0);
+                                        if !self.header.is_empty() {
+                                            let col_width = (ui.available_width() - 70.0) / 2.0;
+                                            let mut label = 0;
+                                            self.header.retain_mut(|(key, value)| {
+                                                ui.add_space(2.0);
+                                                label += 1;
+                                                !ui.horizontal(|ui| {
+                                                    ui.add(
+                                                        TextEdit::singleline(key)
+                                                            .desired_width(col_width),
+                                                    );
+                                                    ui.add(
+                                                        TextEdit::singleline(value)
+                                                            .desired_width(col_width),
+                                                    );
 
-                                                let clear_btn_rect =
-                                                    Self::get_next_del_btn(row_height, ui);
-                                                ui.add_space(row_height);
-                                                components::close_button(
+                                                    let clear_btn_rect =
+                                                        Self::get_next_del_btn(row_height, ui);
+                                                    ui.add_space(row_height);
+                                                    components::close_button(
+                                                        ui,
+                                                        clear_btn_rect,
+                                                        Id::new(
+                                                            label.to_string()
+                                                                + "remove_query_param_btn",
+                                                        ),
+                                                    )
+                                                })
+                                                .inner
+                                                .clicked()
+                                            });
+                                        }
+                                        ui.add_space(5.0);
+                                        ui.horizontal(|ui| {
+                                            ui.vertical_centered(|ui| {
+                                                ui.style_mut().visuals.widgets.hovered.expansion =
+                                                    2.0;
+                                                let next_pos = ui.next_widget_position();
+                                                let clear_btn_rect = Rect::from_min_max(
+                                                    next_pos,
+                                                    next_pos.add(Vec2::splat(row_height / 1.5)),
+                                                );
+                                                if components::add_button(
                                                     ui,
                                                     clear_btn_rect,
-                                                    Id::new(
-                                                        label.to_string()
-                                                            + "remove_query_param_btn",
-                                                    ),
+                                                    Id::new("add_header_button"),
                                                 )
+                                                .clicked()
+                                                {
+                                                    self.header
+                                                        .push(("".to_string(), "".to_string()));
+                                                };
                                             })
-                                            .inner
-                                            .clicked()
                                         });
-                                    }
-                                    ui.add_space(5.0);
-                                    ui.horizontal(|ui| {
-                                        ui.vertical_centered(|ui| {
-                                            ui.style_mut().visuals.widgets.hovered.expansion = 2.0;
-                                            let next_pos = ui.next_widget_position();
-                                            let clear_btn_rect = Rect::from_min_max(
-                                                next_pos,
-                                                next_pos.add(Vec2::splat(row_height / 1.5)),
-                                            );
-                                            if components::add_button(
-                                                ui,
-                                                clear_btn_rect,
-                                                Id::new("add_header_button"),
-                                            )
-                                            .clicked()
-                                            {
-                                                self.header.push(("".to_string(), "".to_string()));
-                                            };
-                                        })
                                     });
-                                });
-                        });
+                            })
+                            .response
+                            .rect;
+
+                        ui.painter_at(group_rect).rect_stroke(
+                            group_rect,
+                            Rounding::none(),
+                            Stroke::new(2.0, color::GRAY),
+                        );
                     }
                     false => {
                         self.param_view(ui);
@@ -365,39 +378,48 @@ impl Http {
     }
 
     fn param_view(&mut self, ui: &mut Ui) {
-        ui.group(|ui| {
-            ui.set_width(ui.available_width());
-            ui.vertical_centered(|ui| {
-                ui.add_space(5.0);
-                self.param_type_view(ui);
-                ui.add_space(5.0);
-                ui.style_mut().visuals.widgets = Visuals::light().widgets;
-                ScrollArea::vertical()
-                    .max_height(ui.available_height() / 2.0 - get_row_height(ui).1)
-                    .show(ui, |ui| {
-                        ui.style_mut().visuals.widgets = crate::style::get_widgets(1.0);
-                        match self.param_type {
-                            ParamType::FormData => {
-                                self.form_data_param_view(ui);
+        // TODO open an issue to trace this style problem:Group's bottom line is lighter than others when form data instead of raw/json.
+        let group_rect = ui
+            .group(|ui| {
+                ui.set_width(ui.available_width());
+                ui.vertical_centered(|ui| {
+                    ui.add_space(5.0);
+                    self.param_type_view(ui);
+                    ui.add_space(5.0);
+                    ui.style_mut().visuals.widgets = Visuals::light().widgets;
+                    ScrollArea::vertical()
+                        .max_height(ui.available_height() / 2.0 - get_row_height(ui).1)
+                        .show(ui, |ui| {
+                            ui.style_mut().visuals.widgets = crate::style::get_widgets(1.0);
+                            match self.param_type {
+                                ParamType::FormData => {
+                                    self.form_data_param_view(ui);
+                                }
+                                ParamType::Json => {
+                                    self.raw_param_view(ui);
+                                }
+                                ParamType::Other => {
+                                    self.raw_param_view(ui);
+                                }
+                                ParamType::Query => {
+                                    self.query_param_view(ui);
+                                }
+                                _ => {
+                                    ui.set_width(ui.available_width());
+                                    // Make panel has max width
+                                    // ui.horizontal(|ui| ui.vertical_centered(|ui| ui.add_space(1.0)));
+                                }
                             }
-                            ParamType::Json => {
-                                self.raw_param_view(ui);
-                            }
-                            ParamType::Other => {
-                                self.raw_param_view(ui);
-                            }
-                            ParamType::Query => {
-                                self.query_param_view(ui);
-                            }
-                            _ => {
-                                ui.set_width(ui.available_width());
-                                // Make panel has max width
-                                // ui.horizontal(|ui| ui.vertical_centered(|ui| ui.add_space(1.0)));
-                            }
-                        }
-                    });
-            });
-        });
+                        });
+                });
+            })
+            .response
+            .rect;
+        ui.painter_at(group_rect).rect_stroke(
+            group_rect,
+            Rounding::none(),
+            Stroke::new(2.0, color::GRAY),
+        );
     }
 
     fn form_data_param_view(&mut self, ui: &mut Ui) {
