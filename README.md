@@ -9,6 +9,7 @@ It uses the Rust [egui](https://github.com/emilk/egui/) GUI library.
 - `Get`,`Post` and other method request
 - `application/json`,`multipart/form-data` and more `content-type`
 - Custom request header
+- cULR convert
 
 ### UI
 
@@ -18,13 +19,6 @@ It uses the Rust [egui](https://github.com/emilk/egui/) GUI library.
 
 More screenshot in [here](https://github.com/willser/weaver/tree/master/resources/)
 
-### Todo
-
-There are something need to do I can be sure now.
-
-- Better UI and style
-- Icon
-- Default language font
 
 ### Contributing
 
@@ -43,7 +37,7 @@ As much as possible run following these steps:
 cargo fmt
 cargo clippy
 ```
-There are no `ci checks` yet,so this is an optional,I will do this before merge for now.If you have good idea,please create an [issue](https://github.com/willser/weaver/issues) 
+There is a `ci checks` for now.If you have good idea,please create an [issue](https://github.com/willser/weaver/issues)
 or create a `PR`.
 
 #### Commit and pull requests
