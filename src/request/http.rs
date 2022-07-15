@@ -376,8 +376,8 @@ impl Http {
 
         let param_type = if param_type.contains("application/json") {
             ParamType::Json
-        } else if param_type.contains("application/json") {
-            ParamType::Json
+        } else if param_type.contains("multipart/form-data") {
+            ParamType::FormData
         } else {
             ParamType::Other
         };
@@ -569,9 +569,8 @@ impl Http {
             y: next_pos.y - row_height / 3.0,
         };
         ui.style_mut().visuals.widgets.hovered.expansion = 2.0;
-        let clear_btn_rect =
-            Rect::from_min_max(next_pos, next_pos.add(Vec2::splat(row_height / 1.5)));
-        clear_btn_rect
+
+        Rect::from_min_max(next_pos, next_pos.add(Vec2::splat(row_height / 1.5)))
     }
 
     fn raw_param_view(&mut self, ui: &mut Ui) {

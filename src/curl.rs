@@ -23,10 +23,11 @@ impl Curl {
             .open(&mut self.show_curl_window)
             .collapsible(false)
             .show(ctx, |ui| {
-                // ui.style_mut().visuals.selection.stroke.color = color::CRIMSON;
-                ScrollArea::vertical().max_height(300.0).show(ui, |ui| {
-                    ui.add(TextEdit::multiline(&mut self.text).desired_width(f32::INFINITY))
-                });
+                ScrollArea::vertical()
+                    .max_height(ui.available_height() / 2.)
+                    .show(ui, |ui| {
+                        ui.add(TextEdit::multiline(&mut self.text).desired_width(f32::INFINITY))
+                    });
                 if let Some(err) = &self.error {
                     ui.add(
                         TextEdit::singleline(&mut err.as_str())
@@ -35,7 +36,7 @@ impl Curl {
                             .desired_width(f32::INFINITY),
                     );
                 }
-                ui.horizontal(|ui| {
+                ui.vertical_centered(|ui| {
                     if ui.add(Button::new("Import")).clicked() {
                         {
                             match parse_curl(self.text.as_str()) {
@@ -103,7 +104,7 @@ fn parse_curl(curl: &str) -> Result<Http, String> {
         if let Some(value) = result.get(i) {
             match value.as_str() {
                 "-H" | "--header" => {
-                    i = i + 1;
+                    i += 1;
                     if let Some(header) = result.get(i) {
                         let result = split_string(":", header.as_str());
                         if header.to_lowercase().contains("content-type") {
@@ -114,14 +115,14 @@ fn parse_curl(curl: &str) -> Result<Http, String> {
                     }
                 }
                 "-F" | "--form" => {
-                    i = i + 1;
+                    i += 1;
                     if let Some(param) = result.get(i) {
                         let string = split_string("=", &split_string(";", param).0);
-                        let param = if string.1.starts_with("@") {
+                        let param = if string.1.starts_with('@') {
                             (
                                 string.0,
                                 "".to_string(),
-                                Some(PathBuf::from(string.1.replace("@", ""))),
+                                Some(PathBuf::from(string.1.replace('@', ""))),
                                 FormParamType::File,
                             )
                         } else {
@@ -132,24 +133,24 @@ fn parse_curl(curl: &str) -> Result<Http, String> {
                 }
                 "--data-binary" => {}
                 "--data" | "--data-raw" | "-d" => {
-                    i = i + 1;
+                    i += 1;
                     if let Some(param) = result.get(i) {
                         text_param = param.clone()
                     }
                 }
                 "-X" | "--request" => {
-                    i = i + 1;
+                    i += 1;
                     if let Some(method_result) = result.get(i) {
                         method = method_result.to_uppercase()
                     }
                 }
                 _ => {
-                    if !value.starts_with("-") {
+                    if value.starts_with("http") {
                         url = Some(value.to_string());
                     }
                 }
             };
-            i = i + 1
+            i += 1
         };
     }
 
@@ -168,13 +169,13 @@ fn parse_curl(curl: &str) -> Result<Http, String> {
 }
 
 fn split_string(regex: &str, origin: &str) -> (String, String) {
-    return match origin.find(regex) {
+    match origin.find(regex) {
         None => (origin.to_string(), "".to_string()),
         Some(index) => (
             origin[0..index].to_string(),
             origin[(index + 1)..origin.len()].to_string(),
         ),
-    };
+    }
 }
 
 #[test]

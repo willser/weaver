@@ -20,7 +20,7 @@ mod setting;
 mod style;
 
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Default)]
 pub struct Weaver {
     requests: Vec<Http>,
     active: usize,
@@ -30,18 +30,6 @@ pub struct Weaver {
     // TODO Make it out of `Weaver` struct.Use lazy_static maybe better.
     #[serde(skip)]
     style: Option<WeaverStyle>,
-}
-
-impl Default for Weaver {
-    fn default() -> Self {
-        Self {
-            requests: vec![],
-            active: 0,
-            settings: Default::default(),
-            curl: Default::default(),
-            style: None,
-        }
-    }
 }
 
 impl App for Weaver {
@@ -78,7 +66,11 @@ impl App for Weaver {
                     }
                 });
 
-                ui.menu_button("Settings", |_ui| self.settings.show_settings = true);
+                ui.menu_button("Settings", |ui| {
+                    if ui.button("Settings").clicked() {
+                        self.settings.show_settings = true
+                    }
+                });
             });
         });
         egui::SidePanel::left("request_list")
